@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Análise Gratuita - MatScore AI</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
+        nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
+        .match-card { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 1em; padding: 1em; }
+        .skeleton { animation: pulse 1.5s ease-in-out infinite; background-color: #f0f0f0; border-radius: 8px; padding: 1.5em; margin-bottom: 1em; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .cta-box { background-color: #e7f3ff; border-left: 6px solid #2196F3; padding: 15px; margin-top: 2em; margin-bottom: 2em; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('main.dashboard') }}"><strong>Meu Dashboard</strong></a>
+            <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
+        {% else %}
+            <a href="{{ url_for('main.login') }}">Login</a>
+            <a href="{{ url_for('main.register') }}" style="margin-left: 15px;">Registrar</a>
+        {% endif %}
+    </nav>
+
+    <h1>Analisador Esportivo Gratuito</h1>
+    <p>Análises diárias para o <strong>Brasileirão Série A</strong>, geradas por Inteligência Artificial.</p>
+
+    <div class="cta-box">
+        <p><b>Gostou?</b> <a href="{{ url_for('main.register') }}">Crie uma conta gratuita</a> para desbloquear mais ligas, como a Premier League e La Liga!</p>
+    </div>
+
+    <div class="search-controls">
+        <input type="date" id="date-picker">
+        <button id="search-button">Analisar Jogos</button>
+    </div>
+    <div id="resultados-container"></div>
+
+    <script>
+        // O JavaScript é quase idêntico ao do dashboard,
+        // mas aponta para a API pública.
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('resultados-container');
+            const searchButton = document.getElementById('search-button');
+            const datePicker = document.getElementById('date-picker');
+            let eventSource = null;
+
+            datePicker.value = new Date().toISOString().split('T')[0];
+
+            searchButton.addEventListener('click', function() {
+                if (eventSource) { eventSource.close(); }
+                const selectedDate = datePicker.value;
+                if (!selectedDate) { alert('Por favor, selecione uma data.'); return; }
+                
+                container.innerHTML = `<h2>Análises para ${selectedDate}</h2>`;
+                const skeletonHtml = `<div class="skeleton pulse"><div style="height: 20px; background-color: #e0e0e0; border-radius: 4px;"></div></div>`;
+                container.innerHTML += skeletonHtml;
+
+                // MUDANÇA IMPORTANTE: Aponta para a API pública
+                eventSource = new EventSource(`/api/analise/public?date=${selectedDate}`);
+                
+                eventSource.onmessage = function(event) {
+                    const resultado = JSON.parse(event.data);
+                    const currentSkeleton = document.querySelector('.skeleton');
+
+                    if (resultado.status === 'done') {
+                        if (currentSkeleton) { currentSkeleton.remove(); }
+                        container.innerHTML += `<p style="text-align: center; font-weight: bold; color: green;">✅ Busca Concluída!</p>`;
+                        eventSource.close();
+                        return;
+                    }
+
+                    if (resultado.recomendacao === '-') {
+                        if(currentSkeleton) currentSkeleton.outerHTML = `<div class="match-card"><span>${resultado.partida_info}</span></div>`;
+                        return;
+                    }
+                    
+                    const cardHtml = `
+                        <div class="match-card">
+                            <h3>${resultado.mandante_nome} vs ${resultado.visitante_nome}</h3>
+                            <p><b>Cenário de Maior Probabilidade:</b> ${resultado.recomendacao}</p>
+                            <details>
+                                <summary>Ver Análise Detalhada</summary>
+                                <div>${resultado.detalhes.join('<br>')}</div>
+                            </details>
+                        </div>
+                    `;
+
+                    if (currentSkeleton) {
+                        currentSkeleton.outerHTML = cardHtml;
+                    } else {
+                        container.insertAdjacentHTML('beforeend', cardHtml);
+                    }
+                    
+                    container.insertAdjacentHTML('beforeend', skeletonHtml);
+                };
+
+                eventSource.onerror = function() {
+                    eventSource.close();
+                    const currentSkeleton = document.querySelector('.skeleton');
+                    if(currentSkeleton) {
+                        currentSkeleton.outerHTML = '<p style="color: red; text-align: center;">Erro ao conectar com o servidor.</p>';
+                    }
+                };
+            });
+        });
+    </script>
+
+</body>
+</html>

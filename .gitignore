@@ -1,0 +1,13 @@
+# Ignorar ambiente virtual
+venv/
+
+# Ignorar arquivos de configuração locais
+*.env
+
+# Ignorar pasta com chaves de API
+teste/testes.py
+
+# Cache do Python
+__pycache__/
+*.pyc
+teste/teste.py
