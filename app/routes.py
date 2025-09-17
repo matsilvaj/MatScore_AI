@@ -21,8 +21,8 @@ def index():
 @main.route('/api/analise/public')
 def api_analise_public():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
-    # Agora chama a função do outro ficheiro
-    return Response(analysis_logic.gerar_analises(data_selecionada, 'public'), mimetype='text/event-stream')
+    # A API pública trata todos como 'free'
+    return Response(analysis_logic.gerar_analises(data_selecionada, 'free'), mimetype='text/event-stream')
 
 @main.route("/register", methods=['GET', 'POST'])
 def register():
@@ -72,5 +72,5 @@ def dashboard():
 @login_required
 def api_analise_private():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
-    # Agora chama a função do outro ficheiro
-    return Response(analysis_logic.gerar_analises(data_selecionada, 'private'), mimetype='text/event-stream')
+    user_tier_do_utilizador = current_user.subscription_tier
+    return Response(analysis_logic.gerar_analises(data_selecionada, user_tier_do_utilizador), mimetype='text/event-stream')
