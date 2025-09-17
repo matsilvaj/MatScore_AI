@@ -16,6 +16,7 @@
 <body>
     <nav>
         <span>Bem-vindo, {{ current_user.username }}!</span>
+        <a href="{{ url_for('main.account') }}" style="margin-left: 15px;"><strong>Minha Conta</strong></a>
         <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
     </nav>
 
