@@ -7,8 +7,9 @@ from flask_login import login_user, current_user, logout_user, login_required
 from datetime import date
 import json
 
-# Importa a nossa nova lógica de análise
-from . import analysis_logic
+# --- ALTERAÇÃO IMPORTANTE AQUI ---
+# Importamos a função diretamente do seu novo local na pasta 'services'
+from app.services.analysis_logic import gerar_analises
 
 # --- ROTAS PRINCIPAIS E DE AUTENTICAÇÃO ---
 
@@ -22,8 +23,10 @@ def index():
 @main.route('/api/analise/public')
 def api_analise_public():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
-    return Response(stream_with_context(analysis_logic.gerar_analises(data_selecionada, 'free')), mimetype='text/event-stream')
+    # A chamada à função agora é direta, sem o prefixo 'analysis_logic'
+    return Response(stream_with_context(gerar_analises(data_selecionada, 'free')), mimetype='text/event-stream')
 
+# ... (O resto das suas rotas de autenticação (register, login, logout) continuam iguais) ...
 @main.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -68,18 +71,16 @@ def logout():
 def dashboard():
     return render_template('dashboard.html', title='Dashboard')
 
-
 @main.route("/analysis/<int:analysis_id>")
 def analysis_detail(analysis_id):
-    # O resto da função continua exatamente igual
     analysis = Analysis.query.get_or_404(analysis_id)
     content = json.loads(analysis.content)
     return render_template('analysis_detail.html', title='Análise Detalhada', analysis_content=content)
-
 
 @main.route('/api/analise/private')
 @login_required
 def api_analise_private():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
     user_tier_do_utilizador = current_user.subscription_tier
-    return Response(stream_with_context(analysis_logic.gerar_analises(data_selecionada, user_tier_do_utilizador)), mimetype='text/event-stream')
+    # A chamada à função agora é direta, sem o prefixo 'analysis_logic'
+    return Response(stream_with_context(gerar_analises(data_selecionada, user_tier_do_utilizador)), mimetype='text/event-stream')
