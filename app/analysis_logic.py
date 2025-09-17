@@ -131,7 +131,9 @@ def analisar_partida(partida, analysis_date):
     cached_analysis = Analysis.query.filter_by(match_api_id=partida['id'], analysis_date=analysis_date).first()
     if cached_analysis:
         print("--> Análise encontrada no cache do banco de dados.")
-        return json.loads(cached_analysis.content) # Retorna o conteúdo guardado
+        resultado_cache = json.loads(cached_analysis.content)
+        resultado_cache['analysis_id'] = cached_analysis.id
+        return resultado_cache
 
     # 2. SE NÃO ESTIVER EM CACHE, GERAR COM A IA
     print("--> Análise não encontrada no cache. Gerando com a IA...")
@@ -186,6 +188,8 @@ def analisar_partida(partida, analysis_date):
         db.session.add(nova_analise)
         db.session.commit()
         print("--> Nova análise guardada no banco de dados.")
+
+        resultado_final['analysis_id'] = nova_analise.id
 
         return resultado_final
 

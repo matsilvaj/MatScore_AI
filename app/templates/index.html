@@ -102,10 +102,10 @@
                         <div class="match-card">
                             <h3>${resultado.mandante_nome} vs ${resultado.visitante_nome}</h3>
                             <p><b>Cenário de Maior Probabilidade:</b> ${resultado.recomendacao}</p>
-                            <details>
-                                <summary>Ver Análise Detalhada</summary>
-                                <div>${resultado.detalhes.join('<br>')}</div>
-                            </details>
+                            
+                            <a href="/analysis/${resultado.analysis_id}" style="text-decoration: none; background-color: #007bff; color: white; padding: 8px 12px; border-radius: 5px; display: inline-block; margin-top: 10px;">
+                                Ver Análise Detalhada
+                            </a>
                         </div>
                     `;
                     currentLeagueContainer.insertAdjacentHTML('beforeend', cardHtml);

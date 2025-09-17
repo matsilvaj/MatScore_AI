@@ -1,10 +1,11 @@
 # app/routes.py
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
-                   request, Response, stream_with_context) # <--- ADICIONADO AQUI
+                   request, Response, stream_with_context)
 from app import db, bcrypt
-from app.models import User
+from app.models import User, Analysis
 from flask_login import login_user, current_user, logout_user, login_required
 from datetime import date
+import json
 
 # Importa a nossa nova lógica de análise
 from . import analysis_logic
@@ -21,7 +22,6 @@ def index():
 @main.route('/api/analise/public')
 def api_analise_public():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
-    # --- CORREÇÃO APLICADA AQUI ---
     return Response(stream_with_context(analysis_logic.gerar_analises(data_selecionada, 'free')), mimetype='text/event-stream')
 
 @main.route("/register", methods=['GET', 'POST'])
@@ -68,10 +68,18 @@ def logout():
 def dashboard():
     return render_template('dashboard.html', title='Dashboard')
 
+
+@main.route("/analysis/<int:analysis_id>")
+def analysis_detail(analysis_id):
+    # O resto da função continua exatamente igual
+    analysis = Analysis.query.get_or_404(analysis_id)
+    content = json.loads(analysis.content)
+    return render_template('analysis_detail.html', title='Análise Detalhada', analysis_content=content)
+
+
 @main.route('/api/analise/private')
 @login_required
 def api_analise_private():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
     user_tier_do_utilizador = current_user.subscription_tier
-    # --- CORREÇÃO APLICADA AQUI ---
     return Response(stream_with_context(analysis_logic.gerar_analises(data_selecionada, user_tier_do_utilizador)), mimetype='text/event-stream')
