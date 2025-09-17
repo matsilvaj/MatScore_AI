@@ -2,84 +2,49 @@
 
 import requests
 from datetime import date
-import time
 import json
 import os
 import google.generativeai as genai
-from app import cache # Importa o objeto de cache da sua aplicação
+from app import cache, db
+from app.models import Analysis # Importa o novo modelo
 
 # --- CONFIGURAÇÕES GLOBAIS DA ANÁLISE ---
 API_TOKEN_FD = os.getenv('API_TOKEN_FD')
 HEADERS_FD = {"X-Auth-Token": API_TOKEN_FD}
 
 # --- FUNÇÃO DINÂMICA PARA CARREGAR AS LIGAS DA API ---
-# O cache.memoize(timeout=86400) guarda o resultado desta função por 1 dia (86400 segundos).
-# A aplicação só vai chamar a API para buscar as ligas uma vez por dia.
 @cache.memoize(timeout=86400)
 def carregar_ligas_da_api():
-    """
-    Busca todas as competições disponíveis na API football-data.org
-    e as formata num dicionário. O resultado fica em cache.
-    """
     print("--- BUSCANDO LISTA DE LIGAS DA API (operação em cache) ---")
     url = "https://api.football-data.org/v4/competitions"
     ligas = {}
     try:
         response = requests.get(url, headers=HEADERS_FD)
-        response.raise_for_status() # Lança um erro se a resposta não for 200 OK
+        response.raise_for_status()
         dados = response.json()
-        
         for competicao in dados.get('competitions', []):
-            # Usamos o 'code' da competição, que é o que precisamos para as outras chamadas
             if competicao.get('code'):
                 ligas[competicao['name']] = competicao['code']
-        
         print(f"--> {len(ligas)} ligas carregadas com sucesso.")
         return ligas
     except requests.exceptions.RequestException as e:
         print(f"❌ ERRO: Não foi possível buscar as ligas da API. Erro: {e}")
-        # Retorna um dicionário de fallback em caso de erro
-        return {
-            "Premier League": "PL",
-            "La Liga": "PD",
-            "Bundesliga": "BL1",
-            "Serie A": "SA",
-            "Ligue 1": "FL1",
-            "Brasileirão Série A": "BSA",
-            "Copa do Mundo": "WC"
-        }
+        return {"Premier League": "PL", "La Liga": "PD", "Bundesliga": "BL1", "Serie A": "SA", "Ligue 1": "FL1", "Brasileirão Série A": "BSA", "Copa do Mundo": "WC"}
 
 # --- DEFINIÇÃO DOS PLANOS DE ACESSO ---
 LIGAS_DISPONIVEIS = carregar_ligas_da_api()
-
-# Plano Gratuito
-LIGAS_GRATUITAS = {
-    "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA"),
-    "Ligue 1": LIGAS_DISPONIVEIS.get("Ligue 1", "FL1"),
-    "Serie A": LIGAS_DISPONIVEIS.get("Serie A", "SA"),
-    "La liga": LIGAS_DISPONIVEIS.get("La Liga", "PD"),
-}
-
-# Plano para Membros (Premium) - Acesso a TODAS as ligas carregadas da API
+LIGAS_GRATUITAS = {"Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA")}
 LIGAS_MEMBROS = LIGAS_DISPONIVEIS
-
 
 # --- CONFIGURAÇÃO DA IA ---
 try:
     GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
     genai.configure(api_key=GOOGLE_API_KEY)
-    ferramenta_de_busca = genai.protos.Tool(
-        google_search_retrieval=genai.protos.GoogleSearchRetrieval()
-    )
-    model = genai.GenerativeModel(
-      model_name='gemini-1.5-pro-latest',
-      tools=[ferramenta_de_busca],
-    )
-    print("✅ Modelo de IA configurado com sucesso e com ferramenta de busca.")
+    model = genai.GenerativeModel(model_name='gemini-1.5-pro-latest', tools=[genai.protos.Tool(google_search_retrieval=genai.protos.GoogleSearchRetrieval())])
+    print("✅ Modelo de IA configurado com sucesso.")
 except Exception as e:
     print(f"❌ ERRO: Não foi possível configurar a IA. Erro: {e}")
     model = None
-
 
 # --- FUNÇÕES DE ANÁLISE ---
 def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
@@ -90,7 +55,6 @@ def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
         response = requests.get(url, headers=HEADERS_FD, params=params)
         response.raise_for_status()
         dados = response.json()
-        
         lista_partidas = []
         for jogo in dados.get('matches', []):
             lista_partidas.append({
@@ -101,12 +65,15 @@ def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
             })
         print(f"--> {len(lista_partidas)} jogos encontrados.")
         return lista_partidas
-    except Exception as e:
-        print(f"Erro ao buscar jogos do dia: {e}"); return []
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao buscar jogos do dia para {nome_liga}: {e}")
+        return []
 
 
 def gerar_analise_ia(partida):
-    if not model: 
+    # (Esta função permanece a mesma, pois a lógica de prompt está boa)
+    # ... (código da sua função gerar_analise_ia sem alterações) ...
+    if not model:
         return "Erro na IA", "IA não configurada."
     
     prompt = f"""
@@ -149,19 +116,25 @@ def gerar_analise_ia(partida):
       }}
     }}
     """
-    
+
     try:
         response = model.generate_content(prompt)
         return response.text.strip(), None
-        
     except Exception as e:
         print(f"Erro ao gerar análise da IA: {e}")
         return None, f"Não foi possível obter a análise da IA. Detalhes: {str(e)}"
 
-
-def analisar_partida(partida):
-    print(f"\n--- Analisando Jogo (via IA): {partida['mandante_nome']} vs {partida['visitante_nome']} ---")
+def analisar_partida(partida, analysis_date):
+    print(f"\n--- Analisando Jogo: {partida['mandante_nome']} vs {partida['visitante_nome']} ---")
     
+    # 1. VERIFICAR CACHE NO BANCO DE DADOS PRIMEIRO
+    cached_analysis = Analysis.query.filter_by(match_api_id=partida['id'], analysis_date=analysis_date).first()
+    if cached_analysis:
+        print("--> Análise encontrada no cache do banco de dados.")
+        return json.loads(cached_analysis.content) # Retorna o conteúdo guardado
+
+    # 2. SE NÃO ESTIVER EM CACHE, GERAR COM A IA
+    print("--> Análise não encontrada no cache. Gerando com a IA...")
     texto_completo_ia, erro = gerar_analise_ia(partida)
 
     if erro:
@@ -170,9 +143,12 @@ def analisar_partida(partida):
     try:
         clean_json_str = texto_completo_ia.strip().replace('```json', '').replace('```', '')
         dados_ia = json.loads(clean_json_str)
+        
         recomendacao_final = dados_ia.get("mercado_principal", "Ver Análise Detalhada")
         analise = dados_ia.get("analise_detalhada", {})
         dados_brutos = dados_ia.get("dados_utilizados", {})
+        
+        # Montagem do HTML (o seu código de montagem continua aqui)
         html_parts = []
         html_parts.append("<b>Análise de Desempenho Recente</b>")
         dm = analise.get('desempenho_mandante', {})
@@ -202,27 +178,38 @@ def analisar_partida(partida):
         html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']}:</b><br>{ultimos_jogos_visitante_html}<br><br>")
         html_parts.append(f"<b>Últimos 5 Confrontos Diretos:</b><br>{ultimos_confrontos_diretos_html}")
         analise_completa = "".join(html_parts)
+        
+        resultado_final = {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": recomendacao_final, "detalhes": [analise_completa], "liga_nome": partida['liga_nome']}
+
+        # 3. GUARDAR A NOVA ANÁLISE NO BANCO DE DADOS
+        nova_analise = Analysis(match_api_id=partida['id'], analysis_date=analysis_date, content=json.dumps(resultado_final))
+        db.session.add(nova_analise)
+        db.session.commit()
+        print("--> Nova análise guardada no banco de dados.")
+
+        return resultado_final
+
     except json.JSONDecodeError as e:
+        # (código de tratamento de erro inalterado) ...
         print(f"Erro ao processar JSON da IA: {e}")
         print("--- JSON INVÁLIDO RECEBIDO ---")
         print(texto_completo_ia)
         print("-----------------------------")
         recomendacao_final = "Ver Análise Detalhada"
         analise_completa = "A IA não respondeu no formato esperado. Resposta recebida:<br><hr>" + texto_completo_ia.replace('\n', '<br>')
-    return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": recomendacao_final, "detalhes": [analise_completa]}
+        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": recomendacao_final, "detalhes": [analise_completa]}
 
-# --- FUNÇÃO GERADORA ---
 def gerar_analises(data_para_buscar, user_tier='free'):
     watchlist = LIGAS_GRATUITAS if user_tier == 'free' else LIGAS_MEMBROS
     jogos_encontrados_total = 0
     for nome_liga, id_liga in watchlist.items():
-        jogos_da_liga = buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar) 
+        yield f"data: {json.dumps({'status': 'league_start', 'liga_nome': nome_liga})}\n\n"
+        jogos_da_liga = buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar)
         if jogos_da_liga:
             jogos_encontrados_total += len(jogos_da_liga)
             for jogo in jogos_da_liga:
-                resultado_jogo = analisar_partida(jogo) 
+                resultado_jogo = analisar_partida(jogo, data_para_buscar)
                 yield f"data: {json.dumps(resultado_jogo)}\n\n"
     if jogos_encontrados_total == 0:
-        resultado_vazio = {"partida_info": f"Nenhum jogo encontrado para as ligas selecionadas no dia {data_para_buscar}.", "recomendacao": "-"}
-        yield f"data: {json.dumps(resultado_vazio)}\n\n"
+        yield f"data: {json.dumps({'status': 'no_games'})}\n\n"
     yield f"data: {json.dumps({'status': 'done'})}\n\n"

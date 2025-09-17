@@ -6,10 +6,11 @@
     <style>
         body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
         nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
-        .match-card { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 1em; padding: 1em; }
+        .league-container { margin-bottom: 2em; }
+        .league-header { background-color: #f7f7f7; padding: 10px; border-radius: 8px 8px 0 0; border: 1px solid #ccc; border-bottom: 2px solid #ccc; }
+        .match-card { border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; margin-bottom: 1em; padding: 1em; }
         .skeleton { animation: pulse 1.5s ease-in-out infinite; background-color: #f0f0f0; border-radius: 8px; padding: 1.5em; margin-bottom: 1em; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        .premium-box { background-color: #fffbe6; border-left: 6px solid #ffc107; padding: 15px; margin-top: 2em; margin-bottom: 2em; }
     </style>
 </head>
 <body>
@@ -19,57 +20,76 @@
     </nav>
 
     <h1>Dashboard de Análise para Membros</h1>
-    <p>Você tem acesso às análises do <strong>Brasileirão, Premier League e La Liga</strong>.</p>
-    
-    <div class="premium-box">
-        <p>🚀 <b>Em breve:</b> Torne-se Premium para desbloquear TODAS as ligas europeias e mercados avançados!</p>
-    </div>
 
     <div class="search-controls">
+        <label for="date-picker">Selecione a data:</label>
         <input type="date" id="date-picker">
-        <button id="search-button">Analisar Jogos</button>
     </div>
     <div id="resultados-container"></div>
 
     <script>
-        // O JavaScript aqui aponta para a API privada (para membros)
         document.addEventListener('DOMContentLoaded', function() {
             const container = document.getElementById('resultados-container');
-            const searchButton = document.getElementById('search-button');
             const datePicker = document.getElementById('date-picker');
             let eventSource = null;
 
+            // Define a data de hoje como padrão e inicia a busca
             datePicker.value = new Date().toISOString().split('T')[0];
+            fetchAnalyses();
 
-            searchButton.addEventListener('click', function() {
-                if (eventSource) { eventSource.close(); }
+            // Adiciona um listener para quando a data mudar
+            datePicker.addEventListener('change', fetchAnalyses);
+
+            function fetchAnalyses() {
+                if (eventSource) {
+                    eventSource.close();
+                }
                 const selectedDate = datePicker.value;
-                if (!selectedDate) { alert('Por favor, selecione uma data.'); return; }
-                
-                container.innerHTML = `<h2>Análises para ${selectedDate}</h2>`;
-                const skeletonHtml = `<div class="skeleton pulse"><div style="height: 20px; background-color: #e0e0e0; border-radius: 4px;"></div></div>`;
-                container.innerHTML += skeletonHtml;
+                if (!selectedDate) return;
 
-                // MUDANÇA IMPORTANTE: Aponta para a API privada
-                eventSource = new EventSource(`/api/analise/private?date=${selectedDate}`);
-                
-                // O resto do script é idêntico ao da página principal
+                container.innerHTML = `<h2>Análises para ${selectedDate}</h2>`;
+                // Não adicionamos o esqueleto aqui, vamos adicioná-lo dentro de cada liga
+
+                const apiUrl = window.location.pathname.includes('/dashboard') ? `/api/analise/private?date=${selectedDate}` : `/api/analise/public?date=${selectedDate}`;
+                eventSource = new EventSource(apiUrl);
+
+                let currentLeagueContainer = null;
+
                 eventSource.onmessage = function(event) {
                     const resultado = JSON.parse(event.data);
-                    const currentSkeleton = document.querySelector('.skeleton');
-
-                    if (resultado.status === 'done') {
-                        if (currentSkeleton) { currentSkeleton.remove(); }
-                        container.innerHTML += `<p style="text-align: center; font-weight: bold; color: green;">✅ Busca Concluída!</p>`;
-                        eventSource.close();
-                        return;
-                    }
-
-                    if (resultado.recomendacao === '-') {
-                        if(currentSkeleton) currentSkeleton.outerHTML = `<div class="match-card"><span>${resultado.partida_info}</span></div>`;
-                        return;
-                    }
                     
+                    // Remove qualquer esqueleto existente antes de processar a nova mensagem
+                    const existingSkeleton = container.querySelector('.skeleton');
+                    if (existingSkeleton) {
+                        existingSkeleton.remove();
+                    }
+
+                    if (resultado.status) {
+                        switch (resultado.status) {
+                            case 'league_start':
+                                const leagueId = resultado.liga_nome.replace(/\s+/g, '-').toLowerCase();
+                                container.insertAdjacentHTML('beforeend', `
+                                    <div class="league-container" id="container-${leagueId}">
+                                        <div class="league-header"><strong>${resultado.liga_nome}</strong></div>
+                                    </div>
+                                `);
+                                currentLeagueContainer = document.getElementById(`container-${leagueId}`);
+                                // Adiciona um esqueleto dentro da nova liga
+                                currentLeagueContainer.insertAdjacentHTML('beforeend', `<div class="skeleton pulse"><div style="height: 20px; background-color: #e0e0e0; border-radius: 4px;"></div></div>`);
+                                break;
+                            case 'no_games':
+                                container.innerHTML += `<p>Nenhum jogo encontrado para a data selecionada.</p>`;
+                                break;
+                            case 'done':
+                                container.insertAdjacentHTML('beforeend', `<p style="text-align: center; font-weight: bold; color: green;">✅ Busca Concluída!</p>`);
+                                eventSource.close();
+                                break;
+                        }
+                        return;
+                    }
+
+                    if (!currentLeagueContainer) return;
+
                     const cardHtml = `
                         <div class="match-card">
                             <h3>${resultado.mandante_nome} vs ${resultado.visitante_nome}</h3>
@@ -80,24 +100,19 @@
                             </details>
                         </div>
                     `;
-
-                    if (currentSkeleton) {
-                        currentSkeleton.outerHTML = cardHtml;
-                    } else {
-                        container.insertAdjacentHTML('beforeend', cardHtml);
-                    }
-                    
-                    container.insertAdjacentHTML('beforeend', skeletonHtml);
+                    currentLeagueContainer.insertAdjacentHTML('beforeend', cardHtml);
+                    // Adiciona um novo esqueleto após o card, para o próximo jogo
+                    currentLeagueContainer.insertAdjacentHTML('beforeend', `<div class="skeleton pulse"><div style="height: 20px; background-color: #e0e0e0; border-radius: 4px;"></div></div>`);
                 };
 
                 eventSource.onerror = function() {
                     eventSource.close();
-                    const currentSkeleton = document.querySelector('.skeleton');
-                    if(currentSkeleton) {
-                        currentSkeleton.outerHTML = '<p style="color: red; text-align: center;">Erro ao conectar com o servidor.</p>';
+                    const skeleton = container.querySelector('.skeleton');
+                    if (skeleton) {
+                        skeleton.outerHTML = '<p style="color: red; text-align: center;">Erro ao conectar com o servidor.</p>';
                     }
                 };
-            });
+            }
         });
     </script>
 </body>

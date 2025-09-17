@@ -1,6 +1,6 @@
 # app/routes.py
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
-                   request, Response)
+                   request, Response, stream_with_context) # <--- ADICIONADO AQUI
 from app import db, bcrypt
 from app.models import User
 from flask_login import login_user, current_user, logout_user, login_required
@@ -21,8 +21,8 @@ def index():
 @main.route('/api/analise/public')
 def api_analise_public():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
-    # A API pública trata todos como 'free'
-    return Response(analysis_logic.gerar_analises(data_selecionada, 'free'), mimetype='text/event-stream')
+    # --- CORREÇÃO APLICADA AQUI ---
+    return Response(stream_with_context(analysis_logic.gerar_analises(data_selecionada, 'free')), mimetype='text/event-stream')
 
 @main.route("/register", methods=['GET', 'POST'])
 def register():
@@ -73,4 +73,5 @@ def dashboard():
 def api_analise_private():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
     user_tier_do_utilizador = current_user.subscription_tier
-    return Response(analysis_logic.gerar_analises(data_selecionada, user_tier_do_utilizador), mimetype='text/event-stream')
+    # --- CORREÇÃO APLICADA AQUI ---
+    return Response(stream_with_context(analysis_logic.gerar_analises(data_selecionada, user_tier_do_utilizador)), mimetype='text/event-stream')
