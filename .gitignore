@@ -5,9 +5,8 @@ venv/
 *.env
 
 # Ignorar pasta com chaves de API
-teste/testes.py
+teste/teste.py
 
 # Cache do Python
 __pycache__/
 *.pyc
-teste/teste.py

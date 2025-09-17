@@ -4,6 +4,7 @@ import time
 import json
 import os
 import google.generativeai as genai
+from app import cache
 
 # --- CONFIGURAÇÕES GLOBAIS DA ANÁLISE ---
 API_TOKEN_FD = os.getenv('API_TOKEN_FD')
@@ -67,6 +68,35 @@ def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
         return lista_partidas
     except Exception as e:
         print(f"Erro ao buscar jogos do dia: {e}"); return []
+    
+
+def buscar_todas_as_ligas():
+    cache_key = "todas_as_ligas_lista"
+    ligas_cacheadas = cache.get(cache_key)
+    if ligas_cacheadas:
+        print("--- Lista de ligas encontrada no CACHE ---")
+        return ligas_cacheadas
+
+    print("--- Buscando todas as ligas da API ---")
+    url = "https://api.football-data.org/v4/competitions"
+    lista_de_ligas = []
+    try:
+        response = requests.get(url, headers=HEADERS_FD)
+        response.raise_for_status()
+        dados = response.json()
+        for competicao in dados.get('competitions', []):
+            if competicao.get('code'):
+                lista_de_ligas.append({
+                    "nome": competicao['name'],
+                    "code": competicao['code']
+                })
+        
+        # Guarda a lista no cache por 24 horas (86400 segundos)
+        cache.set(cache_key, lista_de_ligas, timeout=86400)
+        return lista_de_ligas
+    except Exception as e:
+        print(f"Erro ao buscar todas as ligas: {e}")
+        return [] # Retorna uma lista vazia em caso de erro
 
 
 def gerar_analise_ia(partida):
@@ -74,89 +104,70 @@ def gerar_analise_ia(partida):
         return "Erro na IA", "IA não configurada."
     
     prompt = f"""
-    Você é o "Mat, o Analista", um especialista em dados esportivos. Sua tarefa é criar um relatório de análise pré-jogo. No Flashscore, encontre as últimas 5 partidas {partida['mandante_nome']} e {partida['visitante_nome']} e os últimos 5 confrontos diretos entre eles . Use os dados fornecidos abaixo para fundamentar sua análise para o confronto.
+    Você é o "Mat, o Analista", um especialista em dados esportivos. Sua tarefa é criar um relatório de análise pré-jogo.
+    INSTRUÇÃO DE BUSCA: Realize uma busca na web, focando em fontes de dados esportivos confiáveis como o Flashscore, para encontrar as últimas 5 partidas de {partida['mandante_nome']} e {partida['visitante_nome']}, e os últimos 5 confrontos diretos entre eles (H2H). Se não encontrar um histórico de confrontos diretos, afirme isso claramente na seção apropriada.
 
-    Sua resposta deve ser 100% neutra, informativa e seguir rigorosamente a estrutura e as instruções abaixo. NÃO use placeholders como "[Análise aqui]". Gere conteúdo real e específico para cada tópico.
+    Sua resposta deve ser 100% neutra e informativa, preenchendo a estrutura JSON solicitada.
 
-    **Análise da Partida: {partida['mandante_nome']} vs. {partida['visitante_nome']}**
+    SEÇÕES DA ANÁLISE:
 
-    Inicie com uma introdução de uma frase sobre a análise.
+    1.  **Análise de Desempenho Recente ({partida['mandante_nome']}):**
+        * **Forma:** Descreva a forma recente da equipe.
+        * **Ponto Forte:** Identifique o principal ponto forte.
+        * **Ponto Fraco:** Identifique o principal ponto fraco.
 
-    **Análise de Desempenho Recente**
-    **{partida['mandante_nome']}:**
-    * **Forma:** Descreva a forma recente da equipe mandante.
+    2.  **Análise de Desempenho Recente ({partida['visitante_nome']}):**
+        * **Forma:** Descreva a forma recente da equipe.
+        * **Ponto Forte:** Identifique o principal ponto forte.
+        * **Ponto Fraco:** Identifique o principal ponto fraco.
 
-    * **Ponto Forte:** Identifique e descreva o principal ponto forte da equipe mandante.
+    3.  **Análise do Confronto Direto:** Análise detalhada dos últimos 5 confrontos diretos (H2H).
 
-    * **Ponto Fraco:** Identifique e descreva o principal ponto fraco da equipe mandante.
+    4.  **Informações Relevantes:** Comente sobre fator casa, momento, lesões, suspensões, etc.
 
-    **{partida['visitante_nome']}:**
-    * **Forma:** Descreva a forma recente da equipe visitante.
+    5.  **Mercados Favoráveis da Partida:**
+        * Liste 3 mercados favoráveis com justificativas analíticas para cada um.
 
-    * **Ponto Forte:** Identifique e descreva o principal ponto forte da equipe visitante.
+    6.  **Cenário de Maior Probabilidade:**
+        * Apresente o mercado MAIS CONSERVADOR da análise com uma justificativa final.
 
-    * **Ponto Fraco:** Identifique e descreva o principal ponto fraco da equipe visitante.
+    7.  **Base de Dados Utilizada:**
+        * Liste os últimos 5 jogos de cada equipe e os 5 confrontos diretos no formato "dd.mm.aaaa | Competição | Jogo - Placar".
 
-    **Análise do Confronto Direto**
-    Forneça uma análise detalhada dos últimos 5 confrontos diretos (H2H) entre as duas equipes.
+    ---
+    ATENÇÃO: Responda OBRIGATORIAMENTE em formato JSON, seguindo esta estrutura. NÃO inclua HTML, Markdown ou qualquer outra formatação nos valores do JSON.
 
-    **Informações Relevantes (Elenco e Contexto)**
-    Comente sobre o fator casa, momento das equipes, possíveis lesões, suspensões ou outros fatores contextuais importantes.
-
-    **Cenários e Tendências da Partida**
-    "Com base na análise detalhada, estas são as tendências para o confronto." (Use exatamente essa frase antes das tendências)
-
-    **Principais Tendências**
-
-    * TENDÊNCIA 1**(Ex: Ambas as Equipes Marcam):** Nomeie a tendência e forneça uma justificativa analítica para ela.
-
-    * TENDÊNCIA 2**(Ex: {partida['mandante_nome']} - Empate Anula):** Nomeie a tendência e forneça uma justificativa analítica para ela.
-    
-    * TENDÊNCIA 3**(Ex: Acima de 2.0 Gols):** Nomeie a tendência e forneça uma justificativa analítica para ela.
-    ("TENDÊNCIA 1, 2 e 3" não é para ter esse texto e isso é só um exemplo, não use esse texto)
-    
-
-    **Cenário de Maior Probabilidade**
-    * **(Ex: Dupla Hipótese - {partida['mandante_nome']} ou Empate):** Nomeie o cenário e forneça a justificativa final e conclusiva (TEM SER A MAIS CONSERVADORA DA ANÁLISE).
-    ("Dupla Hipótese - {partida['mandante_nome']} ou Empate" é só um exemplo, não use esse texto)
-
-    **Base de Dados Utilizada na Análise**
-    "As informações abaixo serviram de fundamento para a análise e as tendências apontadas." (inclua apenas essa frase antes das tabelas)
-
-    **Desempenho Recente das Equipes**
-
-    **Últimos 5 jogos do {partida['mandante_nome']}:**
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    **Últimos 5 jogos do {partida['visitante_nome']}:**
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    **Últimos 5 Confrontos Diretos**
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
-
-    dd.mm.aaaa | Competição | Jogo - Placar
+    {{
+    "mercado_principal": "Nome do mercado de maior probabilidade",
+    "analise_detalhada": {{
+        "desempenho_mandante": {{
+            "forma": "Texto descritivo da forma.",
+            "ponto_forte": "Texto descritivo do ponto forte.",
+            "ponto_fraco": "Texto descritivo do ponto fraco."
+        }},
+        "desempenho_visitante": {{
+            "forma": "Texto descritivo da forma.",
+            "ponto_forte": "Texto descritivo do ponto forte.",
+            "ponto_fraco": "Texto descritivo do ponto fraco."
+        }},
+        "confronto_direto": "Texto da análise H2H.",
+        "informacoes_relevantes": "Texto sobre elenco, contexto, etc.",
+        "mercados_favoraveis": [
+            {{ "mercado": "Nome do mercado 1", "justificativa": "Justificativa para o mercado 1." }},
+            {{ "mercado": "Nome do mercado 2", "justificativa": "Justificativa para o mercado 2." }},
+            {{ "mercado": "Nome do mercado 3", "justificativa": "Justificativa para o mercado 3." }}
+        ],
+        "cenario_provavel": {{
+            "mercado": "Nome do mercado mais conservador.",
+            "justificativa": "Justificativa final e conclusiva."
+        }}
+    }},
+    "dados_utilizados": {{
+        "ultimos_jogos_mandante": "dd.mm.aaaa | Competição | Jogo - Placar\\ndd.mm.aaaa | ...",
+        "ultimos_jogos_visitante": "dd.mm.aaaa | Competição | Jogo - Placar\\ndd.mm.aaaa | ...",
+        "ultimos_confrontos_diretos": "dd.mm.aaaa | Competição | Jogo - Placar\\ndd.mm.aaaa | ..."
+    }}
+    }}
     """
     
     try:
@@ -166,7 +177,6 @@ def gerar_analise_ia(partida):
     except Exception as e:
         print(f"Erro ao gerar análise da IA: {e}")
         return None, f"Não foi possível obter a análise da IA. Detalhes: {str(e)}"
-
 
 def analisar_partida(partida):
     print(f"\n--- Analisando Jogo (via IA): {partida['mandante_nome']} vs {partida['visitante_nome']} ---")
@@ -181,23 +191,64 @@ def analisar_partida(partida):
         }
     
     try:
-        # Extrai o "Cenário de Maior Probabilidade" para usar como destaque no card
-        cenario_principal = texto_completo_ia.split("**Cenário de Maior Probabilidade**")[1].split("**Base de Dados Utilizada na Análise**")[0]
-        # Limpa o cenário para pegar apenas a primeira linha
-        recomendacao_final = cenario_principal.strip().replace('*','').split('\n')[0].strip()
+        clean_json_str = texto_completo_ia.strip().replace('```json', '').replace('```', '')
+        dados_ia = json.loads(clean_json_str)
 
-        # Formata a análise completa para ser exibida nos detalhes, incluindo tabelas
-        analise_completa = texto_completo_ia.replace('\n', '<br>').replace('**', '<b>').replace('*', '&bull;')
-        # Converte tabelas Markdown para HTML (simplificado)
-        analise_completa = analise_completa.replace('|', '</td><td>')
-        analise_completa = analise_completa.replace('</td><td> :---', '</th><th>')
-        analise_completa = analise_completa.replace('<br></td><td>', '<tr><td>')
+        recomendacao_final = dados_ia.get("mercado_principal", "Ver Análise Detalhada")
+        analise = dados_ia.get("analise_detalhada", {})
+        dados_brutos = dados_ia.get("dados_utilizados", {})
+
+        html_parts = []
         
-    except IndexError:
-        # Se a IA não seguir o formato, a extração falha e mostramos um fallback
+        # Desempenho
+        html_parts.append("<b>Análise de Desempenho Recente</b>")
+        dm = analise.get('desempenho_mandante', {})
+        html_parts.append(f"<br><b>{partida['mandante_nome']}:</b>")
+        html_parts.append(f"<ul><li><b>Forma:</b> {dm.get('forma', 'N/A')}</li><li><b>Ponto Forte:</b> {dm.get('ponto_forte', 'N/A')}</li><li><b>Ponto Fraco:</b> {dm.get('ponto_fraco', 'N/A')}</li></ul>")
+
+        dv = analise.get('desempenho_visitante', {})
+        html_parts.append(f"<b>{partida['visitante_nome']}:</b>")
+        html_parts.append(f"<ul><li><b>Forma:</b> {dv.get('forma', 'N/A')}</li><li><b>Ponto Forte:</b> {dv.get('ponto_forte', 'N/A')}</li><li><b>Ponto Fraco:</b> {dv.get('ponto_fraco', 'N/A')}</li></ul>")
+        
+        # --- CORREÇÃO APLICADA AQUI ---
+        # Guardamos os textos formatados em variáveis antes de os usar nas f-strings
+        confronto_direto_html = analise.get('confronto_direto', 'N/A').replace('\n', '<br>')
+        informacoes_relevantes_html = analise.get('informacoes_relevantes', 'N/A').replace('\n', '<br>')
+        
+        html_parts.append(f"<b>Análise do Confronto Direto</b><br>{confronto_direto_html}<br><br>")
+        html_parts.append(f"<b>Informações Relevantes (Elenco e Contexto)</b><br>{informacoes_relevantes_html}<br><br>")
+
+        # Mercados
+        html_parts.append("<b>Mercados Favoráveis da Partida</b>")
+        html_parts.append("<ul>")
+        for mercado in analise.get('mercados_favoraveis', []):
+            html_parts.append(f"<li><b>{mercado.get('mercado', 'N/A')}:</b> {mercado.get('justificativa', 'N/A')}</li>")
+        html_parts.append("</ul>")
+
+        # Cenário provável
+        cp = analise.get('cenario_provavel', {})
+        html_parts.append("<b>Cenário de Maior Probabilidade</b>")
+        html_parts.append(f"<ul><li><b>{cp.get('mercado', 'N/A')}:</b> {cp.get('justificativa', 'N/A')}</li></ul>")
+
+        # Base de dados utilizada
+        html_parts.append("<b>Base de Dados Utilizada na Análise</b><br>")
+        html_parts.append("As informações abaixo serviram de fundamento para a análise e as tendências apontadas.<br><br>")
+        
+        # --- CORREÇÃO APLICADA AQUI ---
+        ultimos_jogos_mandante_html = dados_brutos.get('ultimos_jogos_mandante', 'N/A').replace('\n', '<br>')
+        ultimos_jogos_visitante_html = dados_brutos.get('ultimos_jogos_visitante', 'N/A').replace('\n', '<br>')
+        ultimos_confrontos_diretos_html = dados_brutos.get('ultimos_confrontos_diretos', 'N/A').replace('\n', '<br>')
+
+        html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']}:</b><br>{ultimos_jogos_mandante_html}<br><br>")
+        html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']}:</b><br>{ultimos_jogos_visitante_html}<br><br>")
+        html_parts.append(f"<b>Últimos 5 Confrontos Diretos:</b><br>{ultimos_confrontos_diretos_html}")
+
+        analise_completa = "".join(html_parts)
+
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"Erro ao processar JSON da IA: {e}")
         recomendacao_final = "Ver Análise Detalhada"
-        texto_ia_formatado = texto_completo_ia.replace('\n', '<br>')
-        analise_completa = "A IA não respondeu no formato esperado. Resposta recebida:<br><hr>" + texto_ia_formatado
+        analise_completa = "A IA não respondeu no formato esperado. Resposta recebida:<br><hr>" + texto_completo_ia.replace('\n', '<br>')
 
     return {
         "mandante_nome": partida['mandante_nome'], 
