@@ -3,16 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ title }} - MatScore AI</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; background-color: #fdfdfd; }
+        /* --- ESTILOS GERAIS --- */
+        html, body {
+            height: 100%;
+        }
+        body { 
+            font-family: sans-serif; 
+            max-width: 900px; 
+            margin: auto; 
+            padding: 1em; 
+            background-color: #fdfdfd; 
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex-grow: 1; /* Faz o conteúdo principal crescer para empurrar o rodapé para baixo */
+        }
+        
+        /* --- NAVEGAÇÃO --- */
         .main-nav { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
         .main-nav .logo { font-weight: bold; font-size: 1.2em; text-decoration: none; color: #333; }
         .main-nav .nav-links a { margin-left: 20px; text-decoration: none; color: #555; }
-        .main-nav .nav-links a.active { font-weight: bold; }
+        .main-nav .nav-links a.active { font-weight: bold; color: #007bff; } /* Estilo do link ativo */
+
+        /* --- MENSAGENS FLASH --- */
         .flash-message { padding: 1em; margin-bottom: 1em; border-radius: 8px; color: #fff; }
         .flash-success { background-color: #28a745; }
         .flash-danger { background-color: #dc3545; }
         .flash-info { background-color: #17a2b8; }
+        
+        /* --- RODAPÉ --- */
+        footer {
+            text-align: center;
+            padding: 2em 0;
+            margin-top: 3em;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.9em;
+            color: #777;
+        }
+        footer a {
+            color: #555;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
     {% block styles %}{% endblock %}
 </head>
@@ -44,7 +82,31 @@
         {% block content %}{% endblock %}
     </main>
     
+    <footer>
+    <p>© 2025 MatScore AI - Todos os direitos reservados.</p>
+    <p>
+        <a href="{{ url_for('main.contact') }}">Contato</a> |
+        <a href="{{ url_for('main.terms') }}">Termos de Serviço</a> | 
+        <a href="{{ url_for('main.privacy') }}">Política de Privacidade</a>
+    </p>
+</footer>
+
     <script src="{{ url_for('static', filename='js/analysis_loader.js') }}"></script>
-    {% block scripts %}{% endblock %}
+    {% block scripts %}
+    <script>
+        // Script para destacar o link de navegação ativo
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.main-nav .nav-links a');
+            const currentPath = window.location.pathname;
+
+            navLinks.forEach(link => {
+                // Verifica se o href do link corresponde ao início do caminho da URL atual
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+    {% endblock %}
 </body>
 </html>

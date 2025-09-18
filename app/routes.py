@@ -1,8 +1,10 @@
 # app/routes.py
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
                    request, Response, stream_with_context)
-from app import db, bcrypt
-from app.models import User, Analysis, DailyUserView # Garanta que DailyUserView está importado
+from app import db, bcrypt, mail
+from app.models import User, Analysis, DailyUserView, ContactMessage
+import os
+from flask_mail import Message
 from flask_login import login_user, current_user, logout_user, login_required
 from datetime import date # Garanta que 'date' está importado
 import json
@@ -138,3 +140,56 @@ def delete_account():
     logout_user()
     flash('A sua conta foi excluída com sucesso.', 'info')
     return redirect(url_for('main.index'))
+
+@main.route("/terms")
+def terms():
+    return render_template('terms.html', title='Termos de Serviço')
+
+@main.route("/privacy")
+def privacy():
+    return render_template('privacy.html', title='Política de Privacidade')
+
+# --- ROTA DE CONTATO ---
+@main.route("/contact", methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        category = request.form.get('category')
+        message_body = request.form.get('message')
+
+        # 1. Guardar na Base de Dados
+        new_message = ContactMessage(
+            name=name,
+            email=email,
+            category=category,
+            message=message_body
+        )
+        db.session.add(new_message)
+        db.session.commit()
+
+        # 2. Enviar a Notificação por Email
+        try:
+            msg = Message(
+                subject=f"Nova Mensagem de Contacto: [{category}]",
+                sender=('MatScore AI', os.getenv('MAIL_USERNAME')),
+                recipients=[os.getenv('MAIL_USERNAME')] # Envia para si mesmo
+            )
+            msg.body = f"""
+            Nova mensagem recebida através do site MatScore AI.
+
+            De: {name} ({email})
+            Categoria: {category}
+            -----------------------------------------
+
+            {message_body}
+            """
+            mail.send(msg)
+            flash('A sua mensagem foi enviada com sucesso! Responderemos em breve.', 'success')
+        except Exception as e:
+            print(f"ERRO AO ENVIAR EMAIL: {e}")
+            flash('A sua mensagem foi guardada, mas houve um erro ao enviar a notificação. Não se preocupe, iremos vê-la.', 'info')
+        
+        return redirect(url_for('main.contact'))
+        
+    return render_template('contact.html', title='Contacto')

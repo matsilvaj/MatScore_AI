@@ -6,3 +6,4 @@ requests
 google_generativeai
 python_dotenv
 Flask_Caching
+flask_mail

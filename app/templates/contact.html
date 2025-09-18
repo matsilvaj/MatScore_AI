@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block styles %}
+<style>
+    .form-container { max-width: 600px; margin: auto; }
+    .form-group { margin-bottom: 1em; }
+    .form-group label { display: block; margin-bottom: 0.5em; }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .btn { background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1 style="text-align: center;">Fale Connosco</h1>
+    <p style="text-align: center;">Tem alguma dúvida, sugestão ou encontrou um problema? Envie-nos uma mensagem!</p>
+
+    <form method="POST" action="{{ url_for('main.contact') }}">
+        <div class="form-group">
+            <label for="name">Seu Nome</label>
+            <input type="text" id="name" name="name" required value="{{ current_user.username if current_user.is_authenticated else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="email">Seu Email</label>
+            <input type="email" id="email" name="email" required value="{{ current_user.email if current_user.is_authenticated else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="category">Assunto</label>
+            <select id="category" name="category" required>
+                <option value="" disabled selected>-- Escolha uma categoria --</option>
+                <option value="Sugestão">Sugestão de Melhoria</option>
+                <option value="Reportar Problema">Reportar um Problema Técnico</option>
+                <option value="Dúvida sobre Planos">Dúvida sobre Planos</option>
+                <option value="Outro">Outro Assunto</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="message">Mensagem</label>
+            <textarea id="message" name="message" rows="6" required></textarea>
+        </div>
+        <button type="submit" class="btn">Enviar Mensagem</button>
+    </form>
+</div>
+{% endblock %}

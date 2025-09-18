@@ -1,8 +1,6 @@
-# app/models.py
-
 from . import db
 from flask_login import UserMixin
-from datetime import datetime, date # <--- ATUALIZE ESTA LINHA
+from datetime import datetime, date
 
 class User(db.Model, UserMixin):
     # ... (o seu modelo User continua igual) ...
@@ -40,3 +38,15 @@ class DailyUserView(db.Model):
 
     def __repr__(self):
         return f"<DailyUserView user {self.user_id}, analysis {self.analysis_id}, date {self.view_date}>"
+
+# --- CORREÇÃO: A CLASSE ABAIXO FOI MOVIDA PARA FORA DA 'DailyUserView' ---
+class ContactMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    submitted_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ContactMessage {self.id} from {self.email}>"
