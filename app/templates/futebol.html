@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block styles %}
+<style>
+    .league-container { margin-bottom: 2em; }
+    .league-header { background-color: #f7f7f7; padding: 10px; border-radius: 8px 8px 0 0; border: 1px solid #ccc; border-bottom: 2px solid #ccc; }
+    .match-card { border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; padding: 1em; }
+    .skeleton { animation: pulse 1.5s ease-in-out infinite; background-color: #f0f0f0; border-radius: 8px; padding: 1.5em; margin-bottom: 1em; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    .cta-box { background-color: #e7f3ff; border-left: 6px solid #2196F3; padding: 15px; margin-top: 2em; margin-bottom: 2em; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1>Analisador Esportivo - Futebol</h1>
+    {% if not current_user.is_authenticated or current_user.subscription_tier == 'free' %}
+    <div class="cta-box">
+        <p><b>Gostou?</b> <a href="{{ url_for('main.plans') }}">Torne-se Membro</a> para desbloquear o acesso a TODAS as ligas!</p>
+    </div>
+    {% endif %}
+
+    <div class="search-controls">
+        <label for="date-picker">Selecione a data:</label>
+        <input type="date" id="date-picker">
+    </div>
+    <div id="resultados-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ativa o nosso carregador de análises, passando a API correta
+        initializeAnalysisLoader("{{ url_for('main.api_analise') }}");
+    });
+</script>
+{% endblock %}

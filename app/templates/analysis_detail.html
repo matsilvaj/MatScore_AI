@@ -1,36 +1,20 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ title }} - MatScore AI</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
-        nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
-        .match-header { text-align: center; margin-bottom: 2em; }
-        .analysis-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; }
-    </style>
-</head>
-<body>
-    <nav>
-        {% if current_user.is_authenticated %}
-            <a href="{{ url_for('main.dashboard') }}"><strong>Meu Dashboard</strong></a>
-            <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
-        {% else %}
-            <a href="{{ url_for('main.index') }}">Página Inicial</a>
-            <a href="{{ url_for('main.login') }}" style="margin-left: 15px;">Login</a>
-            <a href="{{ url_for('main.register') }}" style="margin-left: 15px;">Registrar</a>
-        {% endif %}
-    </nav>
+{% extends "layout.html" %}
 
-    <div class="match-header">
-        <h1>{{ analysis_content.mandante_nome }} vs {{ analysis_content.visitante_nome }}</h1>
-        <p><strong>Competição:</strong> {{ analysis_content.liga_nome }}</p>
-        <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis_content.recomendacao }}</p>
-    </div>
+{% block styles %}
+<style>
+    .match-header { text-align: center; margin-bottom: 2em; }
+    .analysis-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; }
+</style>
+{% endblock %}
 
-    <div class="analysis-card">
-        {{ analysis_content.detalhes[0]|safe }}
-    </div>
+{% block content %}
+<div class="match-header">
+    <h1>{{ analysis_content.mandante_nome }} vs {{ analysis_content.visitante_nome }}</h1>
+    <p><strong>Competição:</strong> {{ analysis_content.liga_nome }}</p>
+    <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis_content.recomendacao }}</p>
+</div>
 
-</body>
-</html>
+<div class="analysis-card">
+    {{ analysis_content.detalhes[0]|safe }}
+</div>
+{% endblock %}

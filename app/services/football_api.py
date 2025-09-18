@@ -1,13 +1,10 @@
-# app/services/football_api.py
-
 import requests
 import os
-# REMOVEMOS 'from app import cache' daqui
+
 
 API_TOKEN_FD = os.getenv('API_TOKEN_FD')
 HEADERS_FD = {"X-Auth-Token": API_TOKEN_FD}
 
-# REMOVEMOS o decorador @cache.memoize daqui. O cache será gerido no analysis_logic.
 def carregar_ligas_da_api():
     """Busca todas as competições disponíveis na API e as formata num dicionário."""
     print("--- BUSCANDO LISTA DE LIGAS DA API ---")
@@ -27,7 +24,7 @@ def carregar_ligas_da_api():
         return {"Premier League": "PL", "Brasileirão Série A": "BSA"}
 
 def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
-    # (Esta função não precisa de alterações)
+
     print(f"\nBuscando jogos para '{nome_liga}' na data: {data}...")
     url = f"https://api.football-data.org/v4/competitions/{codigo_liga}/matches"
     params = {"dateFrom": data, "dateTo": data}

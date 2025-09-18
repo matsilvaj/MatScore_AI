@@ -1,5 +1,3 @@
-# app/services/ai_analyzer.py
-
 import os
 import google.generativeai as genai
 

@@ -1,61 +1,51 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Minha Conta - MatScore AI</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
-        nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
-        .account-section { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1.5em; }
-        .account-section h2 { margin-top: 0; }
-        .danger-zone { border-color: #d9534f; }
-        .form-group { margin-bottom: 1em; }
-        .form-group label { display: block; margin-bottom: 0.5em; }
-        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
-        .btn { text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; }
-        .btn-danger { background-color: #d9534f; }
-    </style>
-</head>
-<body>
-    <nav>
-        <span>Bem-vindo, {{ current_user.username }}!</span>
-        <a href="{{ url_for('main.dashboard') }}" style="margin-left: 15px;">Dashboard</a>
-        <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
-    </nav>
+{% extends "layout.html" %}
 
-    <h1>Configurações da Conta</h1>
+{% block styles %}
+<style>
+    .account-section { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1.5em; }
+    .account-section h2 { margin-top: 0; }
+    .danger-zone { border-color: #d9534f; }
+    .form-group { margin-bottom: 1em; }
+    .form-group label { display: block; margin-bottom: 0.5em; }
+    .form-group input { width: 100%; padding: 8px; box-sizing: border-box; }
+    .btn { text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; }
+    .btn-danger { background-color: #d9534f; }
+</style>
+{% endblock %}
 
-    <div class="account-section">
-        <h2>Meu Plano</h2>
-        <p>Utilizador: <strong>{{ current_user.username }}</strong></p>
-        <p>Email: <strong>{{ current_user.email }}</strong></p>
-        <p>Plano Atual: <strong style="text-transform: capitalize;">{{ current_user.subscription_tier }}</strong></p>
-        {% if current_user.subscription_tier == 'free' %}
-            <a href="{{ url_for('main.plans') }}" class="btn">Fazer Upgrade</a>
-        {% endif %}
-    </div>
-    <div class="account-section">
-        <h2>Alterar Senha</h2>
-        <form method="POST" action="{{ url_for('main.change_password') }}">
-            <div class="form-group">
-                <label for="current_password">Senha Atual</label>
-                <input type="password" id="current_password" name="current_password" required>
-            </div>
-            <div class="form-group">
-                <label for="new_password">Nova Senha</label>
-                <input type="password" id="new_password" name="new_password" required minlength="6">
-            </div>
-            <button type="submit" class="btn">Salvar Nova Senha</button>
-        </form>
-    </div>
+{% block content %}
+<h1>Configurações da Conta</h1>
 
-    <div class="account-section danger-zone">
-        <h2>Excluir Conta</h2>
-        <p>Atenção: Esta ação é irreversível. Todos os seus dados serão permanentemente apagados.</p>
-        <form method="POST" action="{{ url_for('main.delete_account') }}" onsubmit="return confirm('Tem a certeza absoluta que deseja excluir a sua conta? Esta ação não pode ser desfeita.');">
-            <button type="submit" class="btn btn-danger">Excluir Minha Conta</button>
-        </form>
-    </div>
+<div class="account-section">
+    <h2>Meu Plano</h2>
+    <p>Utilizador: <strong>{{ current_user.username }}</strong></p>
+    <p>Email: <strong>{{ current_user.email }}</strong></p>
+    <p>Plano Atual: <strong style="text-transform: capitalize;">{{ current_user.subscription_tier }}</strong></p>
+    {% if current_user.subscription_tier == 'free' %}
+        <a href="{{ url_for('main.plans') }}" class="btn">Fazer Upgrade</a>
+    {% endif %}
+</div>
 
-</body>
-</html>
+<div class="account-section">
+    <h2>Alterar Senha</h2>
+    <form method="POST" action="{{ url_for('main.change_password') }}">
+        <div class="form-group">
+            <label for="current_password">Senha Atual</label>
+            <input type="password" id="current_password" name="current_password" required>
+        </div>
+        <div class="form-group">
+            <label for="new_password">Nova Senha</label>
+            <input type="password" id="new_password" name="new_password" required minlength="6">
+        </div>
+        <button type="submit" class="btn">Salvar Nova Senha</button>
+    </form>
+</div>
+
+<div class="account-section danger-zone">
+    <h2>Excluir Conta</h2>
+    <p>Atenção: Esta ação é irreversível. Todos os seus dados serão permanentemente apagados.</p>
+    <form method="POST" action="{{ url_for('main.delete_account') }}" onsubmit="return confirm('Tem a certeza absoluta que deseja excluir a sua conta? Esta ação não pode ser desfeita.');">
+        <button type="submit" class="btn btn-danger">Excluir Minha Conta</button>
+    </form>
+</div>
+{% endblock %}

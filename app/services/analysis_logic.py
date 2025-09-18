@@ -1,30 +1,29 @@
-# app/services/analysis_logic.py
-
 import json
-from app import cache # O orquestrador pode importar o cache
-from . import football_api, ai_analyzer # Importa os outros serviços
+from app import cache
+from . import football_api, ai_analyzer
 
 # --- GESTÃO DE CACHE MANUAL PARA AS LIGAS ---
 def obter_ligas_disponiveis():
-    """Busca ligas da API ou do cache para evitar chamadas repetidas."""
     cached_ligas = cache.get("lista_de_ligas")
     if cached_ligas:
         print("--- LISTA DE LIGAS ENCONTRADA NO CACHE ---")
         return cached_ligas
     
     ligas = football_api.carregar_ligas_da_api()
-    cache.set("lista_de_ligas", ligas, timeout=86400) # Guarda por 24h
+    cache.set("lista_de_ligas", ligas, timeout=86400)
     return ligas
 
 # --- DEFINIÇÃO DOS PLANOS DE ACESSO ---
 LIGAS_DISPONIVEIS = obter_ligas_disponiveis()
-LIGAS_GRATUITAS = {"Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA")}
+LIGAS_GRATUITAS = {
+    "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA"),
+    "LaLiga": LIGAS_DISPONIVEIS.get("LaLiga", "PD")
+    }
 LIGAS_MEMBROS = LIGAS_DISPONIVEIS
 
 def analisar_partida(partida, analysis_date):
-    """Orquestra a análise de uma partida: verifica cache, gera com IA e guarda na DB."""
-    from app import db # Importação local
-    from app.models import Analysis # Importação local
+    from app import db
+    from app.models import Analysis
 
     print(f"\n--- Analisando Jogo: {partida['mandante_nome']} vs {partida['visitante_nome']} ---")
     
@@ -38,7 +37,6 @@ def analisar_partida(partida, analysis_date):
     print("--> Análise não encontrada no cache. Gerando com a IA...")
     texto_completo_ia, erro = ai_analyzer.gerar_analise_ia(partida)
 
-    # (O resto da função para processar o JSON e montar o HTML continua exatamente igual)
     if erro:
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na IA", "detalhes": [erro]}
     
@@ -93,7 +91,6 @@ def analisar_partida(partida, analysis_date):
         print("--> Nova análise guardada no banco de dados.")
         
         resultado_final['analysis_id'] = nova_analise.id
-
         return resultado_final
 
     except json.JSONDecodeError as e:
@@ -103,19 +100,33 @@ def analisar_partida(partida, analysis_date):
         print("-----------------------------")
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro ao processar análise."}
 
-
 def gerar_analises(data_para_buscar, user_tier='free'):
-    """Gera o stream de análises para a API, agora usando os serviços."""
+    """Gera o stream de análises, agora com melhorias de controlo."""
     watchlist = LIGAS_GRATUITAS if user_tier == 'free' else LIGAS_MEMBROS
     jogos_encontrados_total = 0
-    for nome_liga, id_liga in watchlist.items():
-        yield f"data: {json.dumps({'status': 'league_start', 'liga_nome': nome_liga})}\n\n"
-        jogos_da_liga = football_api.buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar)
-        if jogos_da_liga:
-            jogos_encontrados_total += len(jogos_da_liga)
-            for jogo in jogos_da_liga:
-                resultado_jogo = analisar_partida(jogo, data_para_buscar)
-                yield f"data: {json.dumps(resultado_jogo)}\n\n"
-    if jogos_encontrados_total == 0:
-        yield f"data: {json.dumps({'status': 'no_games'})}\n\n"
-    yield f"data: {json.dumps({'status': 'done'})}\n\n"
+    
+    try:
+        for nome_liga, id_liga in watchlist.items():
+            # --- CORREÇÃO 2: VERIFICAR JOGOS ANTES DE MOSTRAR A LIGA ---
+            # 1. Primeiro, buscamos os jogos da liga.
+            jogos_da_liga = football_api.buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar)
+            
+            # 2. Só se encontrarmos jogos é que enviamos o sinal para criar o "box".
+            if jogos_da_liga:
+                jogos_encontrados_total += len(jogos_da_liga)
+                yield f"data: {json.dumps({'status': 'league_start', 'liga_nome': nome_liga})}\n\n"
+                
+                for jogo in jogos_da_liga:
+                    resultado_jogo = analisar_partida(jogo, data_para_buscar)
+                    yield f"data: {json.dumps(resultado_jogo)}\n\n"
+
+        if jogos_encontrados_total == 0:
+            yield f"data: {json.dumps({'status': 'no_games'})}\n\n"
+        
+        yield f"data: {json.dumps({'status': 'done'})}\n\n"
+
+    # --- CORREÇÃO 1: DETETAR DESCONEXÃO DO UTILIZADOR ---
+    except GeneratorExit:
+        # Esta exceção é ativada automaticamente quando o utilizador fecha a página.
+        print("\n--- Conexão do cliente fechada. Interrompendo a busca de análises. ---")
+        # A função simplesmente termina, parando o loop e as chamadas à API.

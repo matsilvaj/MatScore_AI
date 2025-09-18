@@ -1,27 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Registrar - MatScore AI</title>
-</head>
-<body>
+{% extends "layout.html" %}
+
+{% block content %}
     <h1>Crie sua Conta</h1>
     <form method="POST" action="">
         <div>
             <label>Usuário</label>
             <input type="text" name="username" required>
         </div>
-        <div>
+        <div style="margin-top: 1em;">
             <label>Email</label>
             <input type="email" name="email" required>
         </div>
-        <div>
+        <div style="margin-top: 1em;">
             <label>Senha</label>
             <input type="password" name="password" required>
         </div>
-        <div>
+        <div style="margin-top: 1.5em;">
             <button type="submit">Registrar</button>
         </div>
     </form>
-    <a href="{{ url_for('main.login') }}">Já tem uma conta? Faça login</a>
-</body>
-</html>
+    <p style="margin-top: 2em;">
+        <a href="{{ url_for('main.login') }}">Já tem uma conta? Faça login</a>
+    </p>
+{% endblock %}

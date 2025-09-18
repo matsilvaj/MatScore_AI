@@ -1,69 +1,53 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Nossos Planos - MatScore AI</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
-        nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
-        .plans-container { display: flex; justify-content: center; gap: 2em; margin-top: 2em; }
-        .plan-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; width: 300px; text-align: center; }
-        .plan-card.highlight { border-color: #007bff; border-width: 2px; }
-        .plan-card h2 { margin-top: 0; }
-        .plan-card .price { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
-        .plan-card ul { list-style: none; padding: 0; margin: 1.5em 0; }
-        .plan-card ul li { margin-bottom: 0.75em; }
-        .btn { text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; display: block; width: 100%; box-sizing: border-box; }
-        .btn-secondary { background-color: #6c757d; }
-    </style>
-</head>
-<body>
-    <nav>
-        {% if current_user.is_authenticated %}
-            <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('main.account') }}" style="margin-left: 15px;">Minha Conta</a>
-            <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
-        {% else %}
-            <a href="{{ url_for('main.login') }}" style="margin-left: 15px;">Login</a>
-            <a href="{{ url_for('main.register') }}" style="margin-left: 15px;">Registrar</a>
+{% extends "layout.html" %}
+
+{% block styles %}
+<style>
+    .plans-container { display: flex; justify-content: center; gap: 2em; margin-top: 2em; flex-wrap: wrap; }
+    .plan-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; width: 300px; text-align: center; }
+    .plan-card.highlight { border-color: #007bff; border-width: 2px; }
+    .plan-card h2 { margin-top: 0; }
+    .plan-card .price { font-size: 2em; font-weight: bold; margin: 0.5em 0; }
+    .plan-card ul { list-style: none; padding: 0; margin: 1.5em 0; text-align: left; }
+    .plan-card ul li { margin-bottom: 0.75em; }
+    .btn { text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; display: block; width: 100%; box-sizing: border-box; margin-top: auto; }
+    .btn-secondary { background-color: #6c757d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="text-align: center;">Escolha o Plano Ideal para Você</h1>
+
+<div class="plans-container">
+    <div class="plan-card">
+        <h2>Gratuito</h2>
+        <div class="price">R$0<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
+        <ul>
+            <li>✅ Análises para o Brasileirão Série A e LaLiga</li>
+            <li>✅ Acesso à página de detalhes</li>
+            <li>❌ Acesso a todas as outras ligas</li>
+            <li>❌ Suporte prioritário</li>
+        </ul>
+        {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
+            <button class="btn btn-secondary" disabled>Seu Plano Atual</button>
+        {% elif not current_user.is_authenticated %}
+            <a href="{{ url_for('main.register') }}" class="btn btn-secondary">Comece Agora</a>
         {% endif %}
-    </nav>
-
-    <h1 style="text-align: center;">Escolha o Plano Ideal para Você</h1>
-
-    <div class="plans-container">
-        <div class="plan-card">
-            <h2>Gratuito</h2>
-            <div class="price">R$0<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
-            <ul>
-                <li>✅ Análises para o Brasileirão Série A</li>
-                <li>✅ Acesso à página de detalhes</li>
-                <li>❌ Acesso a todas as outras ligas</li>
-                <li>❌ Suporte prioritário</li>
-            </ul>
-            {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
-                <button class="btn btn-secondary" disabled>Seu Plano Atual</button>
-            {% else %}
-                <a href="{{ url_for('main.register') }}" class="btn btn-secondary">Comece Agora</a>
-            {% endif %}
-        </div>
-
-        <div class="plan-card highlight">
-            <h2>Membro</h2>
-            <div class="price">R$??<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
-            <ul>
-                <li>✅ Análises para o Brasileirão Série A</li>
-                <li>✅ Acesso à página de detalhes</li>
-                <li>✅ <strong>Acesso a TODAS as outras ligas</strong></li>
-                <li>✅ <strong>Suporte prioritário</strong></li>
-            </ul>
-             {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
-                <button class="btn" disabled>Seu Plano Atual</button>
-            {% else %}
-                <a href="#" class="btn">Fazer Upgrade</a>
-            {% endif %}
-        </div>
     </div>
 
-</body>
-</html>
+    <div class="plan-card highlight">
+        <h2>Membro</h2>
+        <div class="price">R$??<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
+        <ul>
+            <li>✅ Análises para o Brasileirão Série A</li>
+            <li>✅ Acesso à página de detalhes</li>
+            <li>✅ <strong>Acesso as PRINCIPAIS LIGAS do Mundo</strong></li>
+            <li>✅ <strong>Suporte prioritário</strong></li>
+        </ul>
+         {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
+            <button class="btn" disabled>Seu Plano Atual</button>
+        {% else %}
+            <a href="#" class="btn">Fazer Upgrade</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
