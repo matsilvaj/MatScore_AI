@@ -2,9 +2,9 @@
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
                    request, Response, stream_with_context)
 from app import db, bcrypt
-from app.models import User, Analysis
+from app.models import User, Analysis, DailyUserView # Garanta que DailyUserView está importado
 from flask_login import login_user, current_user, logout_user, login_required
-from datetime import date
+from datetime import date # Garanta que 'date' está importado
 import json
 
 # Importamos a função diretamente do seu novo local na pasta 'services'
@@ -84,9 +84,32 @@ def logout():
 
 @main.route("/analysis/<int:analysis_id>")
 def analysis_detail(analysis_id):
+    limit_reached = False # Começamos por assumir que o limite não foi atingido
+    
+    # Lógica de limite para utilizadores gratuitos
+    if current_user.is_authenticated and current_user.subscription_tier == 'free':
+        today = date.today()
+        
+        views_today = DailyUserView.query.filter_by(user_id=current_user.id, view_date=today).all()
+        is_already_viewed = any(view.analysis_id == analysis_id for view in views_today)
+        
+        # Se for uma nova visualização e o limite de 3 já foi atingido
+        if not is_already_viewed and len(views_today) >= 3:
+            print(f"--> Utilizador gratuito {current_user.id} atingiu o limite de visualizações.")
+            limit_reached = True # Ativamos a "bandeira" para mostrar o pop-up
+        
+        # Se for uma nova visualização (e estiver dentro do limite), regista-a
+        elif not is_already_viewed:
+            new_view = DailyUserView(user_id=current_user.id, analysis_id=analysis_id, view_date=today)
+            db.session.add(new_view)
+            db.session.commit()
+            print(f"--> Utilizador gratuito {current_user.id} gastou uma visualização. Total hoje: {len(views_today) + 1}")
+
     analysis = Analysis.query.get_or_404(analysis_id)
     content = json.loads(analysis.content)
-    return render_template('analysis_detail.html', title='Análise Detalhada', analysis_content=content)
+    
+    # Passamos a nova "bandeira" para o template
+    return render_template('analysis_detail.html', title='Análise Detalhada', analysis_content=content, limit_reached=limit_reached)
 
 @main.route("/account")
 @login_required

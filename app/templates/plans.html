@@ -22,10 +22,10 @@
         <h2>Gratuito</h2>
         <div class="price">R$0<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
         <ul>
-            <li>✅ Análises para o Brasileirão Série A e LaLiga</li>
-            <li>✅ Acesso à página de detalhes</li>
-            <li>❌ Acesso a todas as outras ligas</li>
-            <li>❌ Suporte prioritário</li>
+            <li>3 Ligas Disponíveis</li>
+            <li>3 Análises Detalhadas Por Dia</li>
+            <li></li>
+            
         </ul>
         {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
             <button class="btn btn-secondary" disabled>Seu Plano Atual</button>
@@ -35,13 +35,24 @@
     </div>
 
     <div class="plan-card highlight">
-        <h2>Membro</h2>
+        <h2>Membro Mensal</h2>
         <div class="price">R$??<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
         <ul>
-            <li>✅ Análises para o Brasileirão Série A</li>
-            <li>✅ Acesso à página de detalhes</li>
-            <li>✅ <strong>Acesso as PRINCIPAIS LIGAS do Mundo</strong></li>
-            <li>✅ <strong>Suporte prioritário</strong></li>
+            <li>✅ <strong>Principais Ligas do Mundo</strong></li>
+            <li>✅ <strong>Análises Detalhadas Ilimitadas</strong></li>
+        </ul>
+         {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
+            <button class="btn" disabled>Seu Plano Atual</button>
+        {% else %}
+            <a href="#" class="btn">Fazer Upgrade</a>
+        {% endif %}
+    </div>
+    <div class="plan-card highlight">
+        <h2>Membro Trimestral</h2>
+        <div class="price">R$??<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
+        <ul>
+            <li>✅ <strong>Principais Ligas do Mundo</strong></li>
+            <li>✅ <strong>Análises Detalhadas Ilimitadas</strong></li>
         </ul>
          {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
             <button class="btn" disabled>Seu Plano Atual</button>

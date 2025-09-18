@@ -1,20 +1,95 @@
-{% extends "layout.html" %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }} - MatScore AI</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
+        nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
+        .match-header { text-align: center; margin-bottom: 2em; }
+        .analysis-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; }
 
-{% block styles %}
-<style>
-    .match-header { text-align: center; margin-bottom: 2em; }
-    .analysis-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; }
-</style>
-{% endblock %}
+        /* --- ESTILOS DO POP-UP ATUALIZADOS --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Mais escuro para focar */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2em;
+            border-radius: 8px;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            position: relative; /* Necessário para o botão de fechar */
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+        .modal-close:hover { color: #333; }
+        .btn { text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; display: inline-block; margin-top: 1em; }
+    </style>
+</head>
+<body>
 
-{% block content %}
-<div class="match-header">
-    <h1>{{ analysis_content.mandante_nome }} vs {{ analysis_content.visitante_nome }}</h1>
-    <p><strong>Competição:</strong> {{ analysis_content.liga_nome }}</p>
-    <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis_content.recomendacao }}</p>
-</div>
+    {% if limit_reached %}
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <span class="modal-close" id="close-modal">&times;</span>
+                <h2>Limite de Análises Atingido!</h2>
+                <p>Você já visualizou as suas 3 análises detalhadas gratuitas de hoje.</p>
+                <p>Faça o upgrade para o plano <strong>Membro</strong> e tenha acesso ilimitado a todas as análises, todos os dias!</p>
+                <a href="{{ url_for('main.plans') }}" class="btn">Ver Planos</a>
+            </div>
+        </div>
+        {% else %}
+        <nav>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('main.futebol') }}"><strong>Futebol</strong></a>
+                <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
+            {% else %}
+                <a href="{{ url_for('main.index') }}">Página Inicial</a>
+                <a href="{{ url_for('main.login') }}" style="margin-left: 15px;">Login</a>
+                <a href="{{ url_for('main.register') }}" style="margin-left: 15px;">Registrar</a>
+            {% endif %}
+        </nav>
 
-<div class="analysis-card">
-    {{ analysis_content.detalhes[0]|safe }}
-</div>
-{% endblock %}
+        <div class="match-header">
+            <h1>{{ analysis_content.mandante_nome }} vs {{ analysis_content.visitante_nome }}</h1>
+            <p><strong>Competição:</strong> {{ analysis_content.liga_nome }}</p>
+            <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis_content.recomendacao }}</p>
+        </div>
+
+        <div class="analysis-card">
+            {{ analysis_content.detalhes[0]|safe }}
+        </div>
+    {% endif %}
+
+
+    <script>
+        // Procuramos o botão de fechar apenas se o pop-up existir
+        const closeModalButton = document.getElementById('close-modal');
+        if (closeModalButton) {
+            closeModalButton.addEventListener('click', function() {
+                // Ao fechar, redireciona o utilizador de volta para a página de futebol
+                window.location.href = "{{ url_for('main.futebol') }}";
+            });
+        }
+    </script>
+</body>
+</html>
