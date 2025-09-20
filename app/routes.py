@@ -8,10 +8,47 @@ from flask_mail import Message
 from flask_login import login_user, current_user, logout_user, login_required
 from datetime import date
 import json
+# --- NOVA IMPORTAÇÃO ---
+from functools import wraps
 
 from app.services.analysis_logic import gerar_analises
 
 main = Blueprint('main', __name__)
+
+# --- FUNÇÃO HELPER PARA ENVIAR EMAIL DE VERIFICAÇÃO ---
+def send_verification_email(user):
+    token = user.get_reset_token() # Reutilizamos o mesmo método de token
+    msg = Message('Confirme o Seu Endereço de E-mail - MatScore AI',
+                  sender=('MatScore AI', os.getenv('MAIL_USERNAME')),
+                  recipients=[user.email])
+    msg.body = f'''Bem-vindo ao MatScore AI! Por favor, clique no link abaixo para verificar o seu e-mail e ativar a sua conta:
+{url_for('main.confirm_email', token=token, _external=True)}
+
+Se você não se registou no nosso site, por favor, ignore este e-mail.
+'''
+    mail.send(msg)
+
+# --- FUNÇÃO HELPER PARA ENVIAR EMAIL DE RESET ---
+def send_reset_email(user):
+    token = user.get_reset_token()
+    msg = Message('Pedido de Redefinição de Senha - MatScore AI',
+                  sender=('MatScore AI', os.getenv('MAIL_USERNAME')),
+                  recipients=[user.email])
+    msg.body = f'''Para redefinir a sua senha, visite o seguinte link:
+{url_for('main.reset_token', token=token, _external=True)}
+
+Se você não fez este pedido, simplesmente ignore este e-mail e nenhuma alteração será feita.
+'''
+    mail.send(msg)
+
+# --- DECORADOR PARA EXIGIR CONFIRMAÇÃO DE EMAIL ---
+def confirmed_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.email_verified:
+            return redirect(url_for('main.unconfirmed'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- ROTAS PRINCIPAIS ---
 
@@ -21,17 +58,19 @@ def index():
     return redirect(url_for('main.futebol'))
 
 @main.route("/futebol")
+@login_required
+@confirmed_required
 def futebol():
-    # --- NOVA LÓGICA PARA CONTADOR DE VISUALIZAÇÕES ---
     views_today_count = 0
     if current_user.is_authenticated and current_user.subscription_tier == 'free':
         today = date.today()
         views_today_count = DailyUserView.query.filter_by(user_id=current_user.id, view_date=today).count()
     
     return render_template('futebol.html', title='Análises de Futebol', views_today=views_today_count)
-    # ---------------------------------------------------
 
 @main.route("/basquete")
+@login_required
+@confirmed_required
 def basquete():
     return render_template('basquete.html', title='Análises de Basquete')
 
@@ -42,6 +81,8 @@ def plans():
 # --- API UNIFICADA ---
 
 @main.route('/api/analise')
+@login_required
+@confirmed_required
 @limiter.limit("10 per minute")
 def api_analise():
     user_tier = 'free'
@@ -50,7 +91,7 @@ def api_analise():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
     return Response(stream_with_context(gerar_analises(data_selecionada, user_tier)), mimetype='text/event-stream')
 
-# --- ROTAS DE AUTENTICAÇÃO ---
+# --- ROTAS DE AUTENTICAÇÃO E VERIFICAÇÃO ---
 
 @main.route("/register", methods=['GET', 'POST'])
 def register():
@@ -64,33 +105,107 @@ def register():
         user = User(username=username, email=email, password=hashed_password)
         db.session.add(user)
         db.session.commit()
-        flash('Sua conta foi criada! Você já pode fazer login.', 'success')
+        
+        send_verification_email(user) # Envia o e-mail de verificação
+        
+        flash('Sua conta foi criada! Por favor, verifique o seu e-mail para ativá-la.', 'success')
         return redirect(url_for('main.login'))
     return render_template('register.html', title='Registrar')
 
 @main.route("/login", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('main.futebol'))
+        if current_user.email_verified:
+            return redirect(url_for('main.futebol'))
+        else:
+            return redirect(url_for('main.unconfirmed'))
+            
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user, remember=True)
-            return redirect(url_for('main.futebol'))
+            if user.email_verified:
+                return redirect(url_for('main.futebol'))
+            else:
+                return redirect(url_for('main.unconfirmed'))
         else:
             flash('Login sem sucesso. Por favor, verifique o e-mail e a senha.', 'danger')
     return render_template('login.html', title='Login')
+
+@main.route('/confirm/<token>')
+@login_required
+def confirm_email(token):
+    if current_user.email_verified:
+        return redirect(url_for('main.futebol'))
+    
+    user = User.verify_reset_token(token) # Reutilizamos o mesmo método de verificação
+    if user and user.id == current_user.id:
+        user.email_verified = True
+        db.session.commit()
+        flash('A sua conta foi verificada com sucesso!', 'success')
+    else:
+        flash('O link de confirmação é inválido ou expirou.', 'danger')
+    return redirect(url_for('main.futebol'))
+
+@main.route('/unconfirmed')
+@login_required
+def unconfirmed():
+    if current_user.email_verified:
+        return redirect(url_for('main.futebol'))
+    return render_template('unconfirmed.html', title='Confirme a sua conta')
+
+@main.route('/resend_confirmation', methods=['POST'])
+@login_required
+def resend_confirmation():
+    if current_user.email_verified:
+        return redirect(url_for('main.futebol'))
+    send_verification_email(current_user)
+    flash('Um novo e-mail de confirmação foi enviado para a sua caixa de entrada.', 'success')
+    return redirect(url_for('main.unconfirmed'))
+
 
 @main.route("/logout")
 def logout():
     logout_user()
     return redirect(url_for('main.index'))
 
+@main.route("/reset_password", methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.futebol'))
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            send_reset_email(user)
+        flash('Se existir uma conta com esse e-mail, um link para redefinir a senha foi enviado.', 'info')
+        return redirect(url_for('main.login'))
+    return render_template('reset_request.html', title='Redefinir Senha')
+
+@main.route("/reset_password/<token>", methods=['GET', 'POST'])
+def reset_token(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('main.futebol'))
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('O token é inválido ou expirou.', 'danger')
+        return redirect(url_for('main.reset_request'))
+    if request.method == 'POST':
+        password = request.form.get('password')
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        user.password = hashed_password
+        db.session.commit()
+        flash('A sua senha foi atualizada! Já pode fazer login.', 'success')
+        return redirect(url_for('main.login'))
+    return render_template('reset_token.html', title='Redefinir Senha')
+
 # --- ROTAS DE CONTEÚDO E CONTA ---
 
 @main.route("/analysis/<int:analysis_id>")
+@login_required
+@confirmed_required
 def analysis_detail(analysis_id):
     limit_reached = False
     
@@ -118,6 +233,7 @@ def analysis_detail(analysis_id):
 def account():
     return render_template('account.html', title='Minha Conta')
 
+# ... (o resto das rotas de conta e contacto permanecem iguais) ...
 @main.route("/account/change_password", methods=['POST'])
 @login_required
 def change_password():
@@ -150,7 +266,6 @@ def terms():
 def privacy():
     return render_template('privacy.html', title='Política de Privacidade')
 
-# --- ROTA DE CONTATO ---
 @main.route("/contact", methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':

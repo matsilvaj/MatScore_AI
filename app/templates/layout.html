@@ -58,10 +58,16 @@
     <nav class="main-nav">
         <a href="{{ url_for('main.index') }}" class="logo">MatScore AI</a>
         <div class="nav-links">
-            <a href="{{ url_for('main.futebol') }}">Futebol</a>
-            <a href="{{ url_for('main.basquete') }}">Basquete</a>
-            <a href="{{ url_for('main.plans') }}">Planos</a>
+            {# --- LÓGICA ATUALIZADA --- #}
+            {# Mostra os links principais apenas se o utilizador não estiver autenticado OU se estiver autenticado E verificado #}
+            {% if not current_user.is_authenticated or current_user.email_verified %}
+                <a href="{{ url_for('main.futebol') }}">Futebol</a>
+                <a href="{{ url_for('main.basquete') }}">Basquete</a>
+                <a href="{{ url_for('main.plans') }}">Planos</a>
+            {% endif %}
+
             {% if current_user.is_authenticated %}
+                {# Mostra sempre Minha Conta e Logout se estiver autenticado #}
                 <a href="{{ url_for('main.account') }}">Minha Conta</a>
                 <a href="{{ url_for('main.logout') }}">Logout</a>
             {% else %}

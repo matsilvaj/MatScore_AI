@@ -1,20 +1,38 @@
+# app/models.py
 from . import db
 from flask_login import UserMixin
 from datetime import datetime, date
+# --- NOVAS IMPORTAÇÕES ---
+from itsdangerous import URLSafeTimedSerializer as Serializer
+from flask import current_app
+# -------------------------
 
 class User(db.Model, UserMixin):
-    # ... (o seu modelo User continua igual) ...
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
     subscription_tier = db.Column(db.String(20), nullable=False, default='free')
+    # --- NOVO CAMPO ADICIONADO ---
+    email_verified = db.Column(db.Boolean, nullable=False, default=False)
+
+    def get_reset_token(self, expires_sec=1800):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        return s.dumps({'user_id': self.id})
+
+    @staticmethod
+    def verify_reset_token(token, expires_sec=1800):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            user_id = s.loads(token, max_age=expires_sec)['user_id']
+        except:
+            return None
+        return User.query.get(user_id)
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}', '{self.subscription_tier}')"
 
 class Analysis(db.Model):
-    # ... (o seu modelo Analysis continua igual) ...
     id = db.Column(db.Integer, primary_key=True)
     match_api_id = db.Column(db.Integer, nullable=False)
     analysis_date = db.Column(db.String(10), nullable=False) # Formato 'YYYY-MM-DD'
@@ -25,21 +43,17 @@ class Analysis(db.Model):
     def __repr__(self):
         return f"Analysis for match {self.match_api_id} on {self.analysis_date}"
 
-
-# --- NOVO MODELO PARA RASTREAR VISUALIZAÇÕES DIÁRIAS ---
 class DailyUserView(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     analysis_id = db.Column(db.Integer, nullable=False)
     view_date = db.Column(db.Date, nullable=False, default=date.today)
 
-    # Garante que um utilizador só pode ter uma entrada por análise por dia
     __table_args__ = (db.UniqueConstraint('user_id', 'analysis_id', 'view_date', name='_user_analysis_date_uc'),)
 
     def __repr__(self):
         return f"<DailyUserView user {self.user_id}, analysis {self.analysis_id}, date {self.view_date}>"
 
-# --- CORREÇÃO: A CLASSE ABAIXO FOI MOVIDA PARA FORA DA 'DailyUserView' ---
 class ContactMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -69,8 +83,6 @@ class Match(db.Model):
     def __repr__(self):
         return f"<Match {self.api_id} on {self.match_date}: {self.home_team_name} vs {self.away_team_name}>"
 
-    # Adiciona um método para converter o objeto em um dicionário, 
-    # facilitando o uso posterior no código que já espera um dicionário.
     def to_dict(self):
         return {
             "id": self.api_id,

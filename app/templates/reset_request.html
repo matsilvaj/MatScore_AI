@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h1>Redefinir Senha</h1>
+    <p>Por favor, insira o e-mail associado à sua conta. Enviaremos um link para redefinir a sua senha.</p>
+    <form method="POST" action="">
+        <div style="margin-top: 1em;">
+            <label>Email</label>
+            <input type="email" name="email" required>
+        </div>
+        <div style="margin-top: 1.5em;">
+            <button type="submit">Pedir Redefinição de Senha</button>
+        </div>
+    </form>
+{% endblock %}

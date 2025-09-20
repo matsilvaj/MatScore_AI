@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <h1>Defina a sua Nova Senha</h1>
+    <form method="POST" action="">
+        <div style="margin-top: 1em;">
+            <label>Nova Senha</label>
+            <input type="password" name="password" required minlength="6">
+        </div>
+        <div style="margin-top: 1.5em;">
+            <button type="submit">Redefinir Senha</button>
+        </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <div style="text-align: center; padding: 2em 1em;">
+        <h1>Confirme a Sua Conta</h1>
+        <p>Obrigado por se registar! Antes de continuar, precisa de confirmar a sua conta.</p>
+        <p>Enviámos um e-mail de verificação para <strong>{{ current_user.email }}</strong>.</p>
+        <p style="margin-top: 2em;">Não recebeu o e-mail?</p>
+        <form method="POST" action="{{ url_for('main.resend_confirmation') }}">
+            <button type="submit" class="btn" style="background-color: #6c757d;">Reenviar E-mail de Confirmação</button>
+        </form>
+    </div>
+{% endblock %}
