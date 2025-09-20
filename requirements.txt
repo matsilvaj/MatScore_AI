@@ -7,3 +7,7 @@ google_generativeai
 python_dotenv
 Flask_Caching
 flask_mail
+redis
+Flask_Redis
+psycopg2_binary
+Flask_Limiter

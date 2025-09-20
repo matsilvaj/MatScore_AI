@@ -1,15 +1,14 @@
 # app/routes.py
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
                    request, Response, stream_with_context)
-from app import db, bcrypt, mail
+from . import db, bcrypt, mail, limiter 
 from app.models import User, Analysis, DailyUserView, ContactMessage
 import os
 from flask_mail import Message
 from flask_login import login_user, current_user, logout_user, login_required
-from datetime import date # Garanta que 'date' está importado
+from datetime import date
 import json
 
-# Importamos a função diretamente do seu novo local na pasta 'services'
 from app.services.analysis_logic import gerar_analises
 
 main = Blueprint('main', __name__)
@@ -19,12 +18,18 @@ main = Blueprint('main', __name__)
 @main.route("/")
 @main.route("/home")
 def index():
-    # A página inicial agora redireciona para a de futebol
     return redirect(url_for('main.futebol'))
 
 @main.route("/futebol")
 def futebol():
-    return render_template('futebol.html', title='Análises de Futebol')
+    # --- NOVA LÓGICA PARA CONTADOR DE VISUALIZAÇÕES ---
+    views_today_count = 0
+    if current_user.is_authenticated and current_user.subscription_tier == 'free':
+        today = date.today()
+        views_today_count = DailyUserView.query.filter_by(user_id=current_user.id, view_date=today).count()
+    
+    return render_template('futebol.html', title='Análises de Futebol', views_today=views_today_count)
+    # ---------------------------------------------------
 
 @main.route("/basquete")
 def basquete():
@@ -37,6 +42,7 @@ def plans():
 # --- API UNIFICADA ---
 
 @main.route('/api/analise')
+@limiter.limit("10 per minute")
 def api_analise():
     user_tier = 'free'
     if current_user.is_authenticated:
@@ -86,31 +92,25 @@ def logout():
 
 @main.route("/analysis/<int:analysis_id>")
 def analysis_detail(analysis_id):
-    limit_reached = False # Começamos por assumir que o limite não foi atingido
+    limit_reached = False
     
-    # Lógica de limite para utilizadores gratuitos
     if current_user.is_authenticated and current_user.subscription_tier == 'free':
         today = date.today()
         
         views_today = DailyUserView.query.filter_by(user_id=current_user.id, view_date=today).all()
         is_already_viewed = any(view.analysis_id == analysis_id for view in views_today)
         
-        # Se for uma nova visualização e o limite de 3 já foi atingido
         if not is_already_viewed and len(views_today) >= 3:
-            print(f"--> Utilizador gratuito {current_user.id} atingiu o limite de visualizações.")
-            limit_reached = True # Ativamos a "bandeira" para mostrar o pop-up
+            limit_reached = True
         
-        # Se for uma nova visualização (e estiver dentro do limite), regista-a
         elif not is_already_viewed:
             new_view = DailyUserView(user_id=current_user.id, analysis_id=analysis_id, view_date=today)
             db.session.add(new_view)
             db.session.commit()
-            print(f"--> Utilizador gratuito {current_user.id} gastou uma visualização. Total hoje: {len(views_today) + 1}")
 
     analysis = Analysis.query.get_or_404(analysis_id)
     content = json.loads(analysis.content)
     
-    # Passamos a nova "bandeira" para o template
     return render_template('analysis_detail.html', title='Análise Detalhada', analysis_content=content, limit_reached=limit_reached)
 
 @main.route("/account")
@@ -135,10 +135,11 @@ def change_password():
 @main.route("/account/delete", methods=['POST'])
 @login_required
 def delete_account():
+    user_id_deleted = current_user.id
     db.session.delete(current_user)
     db.session.commit()
     logout_user()
-    flash('A sua conta foi excluída com sucesso.', 'info')
+    flash(f'A sua conta foi excluída com sucesso.', 'info')
     return redirect(url_for('main.index'))
 
 @main.route("/terms")
@@ -158,7 +159,6 @@ def contact():
         category = request.form.get('category')
         message_body = request.form.get('message')
 
-        # 1. Guardar na Base de Dados
         new_message = ContactMessage(
             name=name,
             email=email,
@@ -168,12 +168,11 @@ def contact():
         db.session.add(new_message)
         db.session.commit()
 
-        # 2. Enviar a Notificação por Email
         try:
             msg = Message(
                 subject=f"Nova Mensagem de Contacto: [{category}]",
                 sender=('MatScore AI', os.getenv('MAIL_USERNAME')),
-                recipients=[os.getenv('MAIL_USERNAME')] # Envia para si mesmo
+                recipients=[os.getenv('MAIL_USERNAME')]
             )
             msg.body = f"""
             Nova mensagem recebida através do site MatScore AI.

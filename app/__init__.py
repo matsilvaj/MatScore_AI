@@ -5,6 +5,10 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_caching import Cache
 from flask_mail import Mail
+# --- NOVAS IMPORTAÇÕES ---
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+# -------------------------
 from dotenv import load_dotenv
 import os
 import logging
@@ -16,8 +20,18 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 login_manager = LoginManager()
 login_manager.login_view = 'main.login'
-cache = Cache(config={'CACHE_TYPE': 'SimpleCache', 'CACHE_DEFAULT_TIMEOUT': 300})
+cache = Cache(config={
+    'CACHE_TYPE': 'RedisCache',
+    'CACHE_REDIS_URL': os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0')
+})
 mail = Mail()
+# --- INICIALIZAÇÃO DO LIMITER ---
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri=os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0') # Usa o Redis para guardar os limites
+)
+# ------------------------------
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -28,7 +42,13 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True)
 
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+    db_user = os.getenv('DB_USER')
+    db_pass = os.getenv('DB_PASS')
+    db_host = os.getenv('DB_HOST')
+    db_port = os.getenv('DB_PORT')
+    db_name = os.getenv('DB_NAME')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}'
+
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
     app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT'))
     app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS').lower() in ['true', 'on', '1']
@@ -40,6 +60,9 @@ def create_app():
     login_manager.init_app(app)
     cache.init_app(app)
     mail.init_app(app)
+    # --- INICIALIZA O LIMITER COM A APP ---
+    limiter.init_app(app)
+    # ------------------------------------
 
     from .routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
@@ -47,14 +70,11 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    # --- CONFIGURAÇÃO DE LOGGING CORRIGIDA ---
-    # Esta configuração agora só será ativada quando você rodar a aplicação
-    # em um ambiente de produção (ou seja, com debug=False).
+    # --- CONFIGURAÇÃO DE LOGGING ---
     if not app.debug and not app.testing:
         if not os.path.exists('logs'):
             os.mkdir('logs')
         
-        # Aumentei o tamanho do arquivo para 1MB para evitar rotações frequentes
         file_handler = RotatingFileHandler('logs/matscore.log', maxBytes=1024000, backupCount=10)
         
         file_handler.setFormatter(logging.Formatter(
