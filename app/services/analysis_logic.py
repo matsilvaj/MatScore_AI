@@ -1,44 +1,44 @@
 import json
-from app import cache
+from app import cache, db
 from . import football_api, ai_analyzer
+from app.models import Analysis, Match
+from flask import current_app
 
 # --- GESTÃO DE CACHE MANUAL PARA AS LIGAS ---
 def obter_ligas_disponiveis():
+    """Busca as ligas da API ou do cache. Deve ser chamada dentro de um contexto de app."""
     cached_ligas = cache.get("lista_de_ligas")
     if cached_ligas:
-        print("--- LISTA DE LIGAS ENCONTRADA NO CACHE ---")
+        current_app.logger.info("Lista de ligas encontrada no cache.")
         return cached_ligas
     
     ligas = football_api.carregar_ligas_da_api()
-    cache.set("lista_de_ligas", ligas, timeout=86400)
+    cache.set("lista_de_ligas", ligas, timeout=86400) # Cache por 24 horas
     return ligas
 
-# --- DEFINIÇÃO DOS PLANOS DE ACESSO ---
-LIGAS_DISPONIVEIS = obter_ligas_disponiveis()
-LIGAS_GRATUITAS = {
-    "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA"),
-    "LaLiga": LIGAS_DISPONIVEIS.get("LaLiga", "PD")
-    }
-LIGAS_MEMBROS = LIGAS_DISPONIVEIS
+# --- As definições de LIGAS foram removidas daqui para evitar o erro de contexto ---
 
 def analisar_partida(partida, analysis_date):
+    """Gera a análise de uma partida, com logging e tratamento de erros."""
     from app import db
     from app.models import Analysis
 
-    print(f"\n--- Analisando Jogo: {partida['mandante_nome']} vs {partida['visitante_nome']} ---")
+    partida_info = f"{partida['mandante_nome']} vs {partida['visitante_nome']}"
+    current_app.logger.info(f"Analisando Jogo: {partida_info}")
     
     cached_analysis = Analysis.query.filter_by(match_api_id=partida['id'], analysis_date=analysis_date).first()
     if cached_analysis:
-        print("--> Análise encontrada no cache do banco de dados.")
+        current_app.logger.info(f"--> Análise para '{partida_info}' encontrada no cache do banco de dados.")
         resultado_cache = json.loads(cached_analysis.content)
         resultado_cache['analysis_id'] = cached_analysis.id
         return resultado_cache
 
-    print("--> Análise não encontrada no cache. Gerando com a IA...")
+    current_app.logger.info(f"--> Análise para '{partida_info}' não encontrada no cache. Gerando com a IA...")
     texto_completo_ia, erro = ai_analyzer.gerar_analise_ia(partida)
 
     if erro:
-        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na IA", "detalhes": [erro]}
+        current_app.logger.error(f"Erro retornado pelo gerador de IA para '{partida_info}': {erro}")
+        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "detalhes": [erro], "error": True}
     
     try:
         clean_json_str = texto_completo_ia.strip().replace('```json', '').replace('```', '')
@@ -88,30 +88,68 @@ def analisar_partida(partida, analysis_date):
         nova_analise = Analysis(match_api_id=partida['id'], analysis_date=analysis_date, content=json.dumps(resultado_final))
         db.session.add(nova_analise)
         db.session.commit()
-        print("--> Nova análise guardada no banco de dados.")
+        current_app.logger.info(f"--> Nova análise para '{partida_info}' guardada no banco de dados.")
         
         resultado_final['analysis_id'] = nova_analise.id
         return resultado_final
 
     except json.JSONDecodeError as e:
-        print(f"Erro ao processar JSON da IA: {e}")
-        print("--- JSON INVÁLIDO RECEBIDO ---")
-        print(texto_completo_ia)
-        print("-----------------------------")
-        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro ao processar análise."}
+        current_app.logger.error(f"Erro de JSONDecode ao processar análise da IA para '{partida_info}': {e}")
+        current_app.logger.warning(f"--- JSON INVÁLIDO RECEBIDO --- \n{texto_completo_ia}\n-----------------------------")
+        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro ao processar análise.", "error": True}
 
 def gerar_analises(data_para_buscar, user_tier='free'):
-    """Gera o stream de análises, agora com melhorias de controlo."""
+    """Gera o stream de análises, com cache de partidas e logging."""
+    from app import db 
+
+    # --- DEFINIÇÃO DAS LIGAS MOVIDA PARA DENTRO DA FUNÇÃO ---
+    LIGAS_DISPONIVEIS = obter_ligas_disponiveis()
+    LIGAS_GRATUITAS = {
+        "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA"),
+        "LaLiga": LIGAS_DISPONIVEIS.get("LaLiga", "PD")
+    }
+    LIGAS_MEMBROS = LIGAS_DISPONIVEIS
+    # -----------------------------------------------------------
+
     watchlist = LIGAS_GRATUITAS if user_tier == 'free' else LIGAS_MEMBROS
     jogos_encontrados_total = 0
     
     try:
         for nome_liga, id_liga in watchlist.items():
-            # --- CORREÇÃO 2: VERIFICAR JOGOS ANTES DE MOSTRAR A LIGA ---
-            # 1. Primeiro, buscamos os jogos da liga.
-            jogos_da_liga = football_api.buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar)
+            jogos_da_liga = []
             
-            # 2. Só se encontrarmos jogos é que enviamos o sinal para criar o "box".
+            jogos_cacheados = Match.query.filter_by(match_date=data_para_buscar, league_name=nome_liga).all()
+
+            if jogos_cacheados:
+                current_app.logger.info(f"Jogos para '{nome_liga}' em {data_para_buscar} encontrados no cache do BD.")
+                jogos_da_liga = [jogo.to_dict() for jogo in jogos_cacheados]
+            else:
+                current_app.logger.info(f"Cache de jogos para '{nome_liga}' em {data_para_buscar} vazio. Buscando na API.")
+                jogos_da_api = football_api.buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar)
+                
+                if jogos_da_api:
+                    for jogo_api in jogos_da_api:
+                        existe = Match.query.filter_by(api_id=jogo_api['id']).first()
+                        if not existe:
+                            novo_jogo = Match(
+                                api_id=jogo_api['id'],
+                                match_date=data_para_buscar,
+                                home_team_id=jogo_api['mandante_id'],
+                                home_team_name=jogo_api['mandante_nome'],
+                                home_team_crest=jogo_api['mandante_escudo'],
+                                away_team_id=jogo_api['visitante_id'],
+                                away_team_name=jogo_api['visitante_nome'],
+                                away_team_crest=jogo_api['visitante_escudo'],
+                                league_name=jogo_api['liga_nome']
+                            )
+                            db.session.add(novo_jogo)
+                    
+                    if db.session.new:
+                        db.session.commit()
+                        current_app.logger.info(f"{len(jogos_da_api)} jogos de '{nome_liga}' salvos no cache do BD.")
+                    
+                    jogos_da_liga = jogos_da_api
+
             if jogos_da_liga:
                 jogos_encontrados_total += len(jogos_da_liga)
                 yield f"data: {json.dumps({'status': 'league_start', 'liga_nome': nome_liga})}\n\n"
@@ -125,8 +163,8 @@ def gerar_analises(data_para_buscar, user_tier='free'):
         
         yield f"data: {json.dumps({'status': 'done'})}\n\n"
 
-    # --- CORREÇÃO 1: DETETAR DESCONEXÃO DO UTILIZADOR ---
     except GeneratorExit:
-        # Esta exceção é ativada automaticamente quando o utilizador fecha a página.
-        print("\n--- Conexão do cliente fechada. Interrompendo a busca de análises. ---")
-        # A função simplesmente termina, parando o loop e as chamadas à API.
+        current_app.logger.warning("Conexão do cliente fechada. Interrompendo a busca de análises.")
+    except Exception as e:
+        current_app.logger.error(f"Erro inesperado no gerador de análises: {e}", exc_info=True)
+        yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"

@@ -50,3 +50,36 @@ class ContactMessage(db.Model):
 
     def __repr__(self):
         return f"<ContactMessage {self.id} from {self.email}>"
+    
+class Match(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    api_id = db.Column(db.Integer, unique=True, nullable=False)
+    match_date = db.Column(db.String(10), nullable=False, index=True) # Formato 'YYYY-MM-DD'
+    
+    home_team_id = db.Column(db.Integer, nullable=False)
+    home_team_name = db.Column(db.String(100), nullable=False)
+    home_team_crest = db.Column(db.String(255))
+    
+    away_team_id = db.Column(db.Integer, nullable=False)
+    away_team_name = db.Column(db.String(100), nullable=False)
+    away_team_crest = db.Column(db.String(255))
+    
+    league_name = db.Column(db.String(100), nullable=False)
+
+    def __repr__(self):
+        return f"<Match {self.api_id} on {self.match_date}: {self.home_team_name} vs {self.away_team_name}>"
+
+    # Adiciona um método para converter o objeto em um dicionário, 
+    # facilitando o uso posterior no código que já espera um dicionário.
+    def to_dict(self):
+        return {
+            "id": self.api_id,
+            "data": self.match_date,
+            "mandante_id": self.home_team_id,
+            "mandante_nome": self.home_team_name,
+            "mandante_escudo": self.home_team_crest,
+            "visitante_id": self.away_team_id,
+            "visitante_nome": self.away_team_name,
+            "visitante_escudo": self.away_team_crest,
+            "liga_nome": self.league_name
+        }

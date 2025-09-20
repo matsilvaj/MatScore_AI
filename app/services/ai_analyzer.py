@@ -1,20 +1,25 @@
 import os
 import google.generativeai as genai
+from flask import current_app # Importa o current_app
 
 model = None
 try:
     GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel(model_name='gemini-1.5-pro-latest', tools=[genai.protos.Tool(google_search_retrieval=genai.protos.GoogleSearchRetrieval())])
+    # Não usamos o logger aqui porque o app ainda não foi criado, mas o print inicial é aceitável.
     print("✅ Modelo de IA configurado com sucesso.")
 except Exception as e:
+    # O logger também não estaria disponível aqui.
     print(f"❌ ERRO: Não foi possível configurar a IA. Erro: {e}")
 
 def gerar_analise_ia(partida):
-    """Gera a análise de uma partida usando o modelo de IA."""
+    """Gera a análise de uma partida usando o modelo de IA, com logging."""
     if not model:
+        current_app.logger.error("Tentativa de gerar análise com o modelo de IA não configurado.")
         return "Erro na IA", "IA não configurada."
     
+    # ... (o seu prompt continua o mesmo) ...
     prompt = f"""
     Você é o "Mat, o Analista", um especialista em dados esportivos. Sua tarefa é criar um relatório de análise pré-jogo.
     INSTRUÇÃO DE BUSCA: Realize uma busca na web, focando em fontes de dados esportivos confiáveis como o Flashscore, para encontrar as últimas 5 partidas de {partida['mandante_nome']} e {partida['visitante_nome']}, e os últimos 5 confrontos diretos entre eles. Se não encontrar um histórico de confrontos diretos, afirme isso claramente na seção apropriada.
@@ -57,8 +62,9 @@ def gerar_analise_ia(partida):
     """
 
     try:
+        current_app.logger.info(f"Gerando análise de IA para: {partida['mandante_nome']} vs {partida['visitante_nome']}")
         response = model.generate_content(prompt)
         return response.text.strip(), None
     except Exception as e:
-        print(f"Erro ao gerar análise da IA: {e}")
+        current_app.logger.error(f"Erro ao gerar análise da IA para {partida['mandante_nome']} vs {partida['visitante_nome']}: {e}")
         return None, f"Não foi possível obter a análise da IA. Detalhes: {str(e)}"

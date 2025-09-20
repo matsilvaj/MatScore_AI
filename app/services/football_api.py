@@ -1,35 +1,36 @@
 import requests
 import os
-
+from flask import current_app # Importa o current_app para acessar o logger
 
 API_TOKEN_FD = os.getenv('API_TOKEN_FD')
 HEADERS_FD = {"X-Auth-Token": API_TOKEN_FD}
 
 def carregar_ligas_da_api():
     """Busca todas as competições disponíveis na API e as formata num dicionário."""
-    print("--- BUSCANDO LISTA DE LIGAS DA API ---")
+    current_app.logger.info("Buscando lista de ligas da API externa.")
     url = "https://api.football-data.org/v4/competitions"
     ligas = {}
     try:
-        response = requests.get(url, headers=HEADERS_FD)
-        response.raise_for_status()
+        response = requests.get(url, headers=HEADERS_FD, timeout=10) # Adiciona um timeout
+        response.raise_for_status()  # Levanta um erro para respostas 4xx ou 5xx
         dados = response.json()
         for competicao in dados.get('competitions', []):
             if competicao.get('code'):
                 ligas[competicao['name']] = competicao['code']
-        print(f"--> {len(ligas)} ligas carregadas com sucesso.")
+        current_app.logger.info(f"{len(ligas)} ligas carregadas com sucesso da API.")
         return ligas
     except requests.exceptions.RequestException as e:
-        print(f"❌ ERRO: Não foi possível buscar as ligas da API. Erro: {e}")
+        current_app.logger.error(f"Não foi possível buscar as ligas da API. Erro: {e}")
+        # Retorna um fallback para que a aplicação não quebre totalmente
         return {"Premier League": "PL", "Brasileirão Série A": "BSA"}
 
 def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
-
-    print(f"\nBuscando jogos para '{nome_liga}' na data: {data}...")
+    """Busca os jogos do dia, agora com logging e tratamento de erros aprimorado."""
+    current_app.logger.info(f"Buscando jogos para '{nome_liga}' na data: {data}...")
     url = f"https://api.football-data.org/v4/competitions/{codigo_liga}/matches"
     params = {"dateFrom": data, "dateTo": data}
     try:
-        response = requests.get(url, headers=HEADERS_FD, params=params)
+        response = requests.get(url, headers=HEADERS_FD, params=params, timeout=10)
         response.raise_for_status()
         dados = response.json()
         lista_partidas = []
@@ -40,8 +41,8 @@ def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
                 "visitante_id": jogo['awayTeam']['id'], "visitante_nome": jogo['awayTeam']['name'], "visitante_escudo": jogo['awayTeam']['crest'],
                 "liga_nome": jogo['competition']['name']
             })
-        print(f"--> {len(lista_partidas)} jogos encontrados.")
+        current_app.logger.info(f"--> {len(lista_partidas)} jogos encontrados para '{nome_liga}'.")
         return lista_partidas
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao buscar jogos do dia para {nome_liga}: {e}")
-        return []
+        current_app.logger.error(f"Erro ao buscar jogos do dia para {nome_liga}: {e}")
+        return [] # Retorna uma lista vazia em caso de falha
