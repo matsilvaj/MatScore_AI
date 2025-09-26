@@ -16,7 +16,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Mais escuro para focar */
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -29,7 +29,7 @@
             text-align: center;
             width: 90%;
             max-width: 500px;
-            position: relative; /* Necessário para o botão de fechar */
+            position: relative;
         }
         .modal-content h2 { margin-top: 0; }
         .modal-close {
@@ -57,7 +57,7 @@
                 <a href="{{ url_for('main.plans') }}" class="btn">Ver Planos</a>
             </div>
         </div>
-        {% else %}
+    {% else %}
         <nav>
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('main.futebol') }}"><strong>Futebol</strong></a>
@@ -80,13 +80,11 @@
         </div>
     {% endif %}
 
-
     <script>
-        // Procuramos o botão de fechar apenas se o pop-up existir
+        // Lógica para o pop-up de limite
         const closeModalButton = document.getElementById('close-modal');
         if (closeModalButton) {
             closeModalButton.addEventListener('click', function() {
-                // Ao fechar, redireciona o utilizador de volta para a página de futebol
                 window.location.href = "{{ url_for('main.futebol') }}";
             });
         }

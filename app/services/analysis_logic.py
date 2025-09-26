@@ -33,21 +33,23 @@ def analisar_partida(partida, analysis_date):
         return resultado_cache
 
     current_app.logger.info(f"--> Análise para '{partida_info}' não encontrada no cache. Gerando com a IA...")
-    dados_ia, erro = ai_analyzer.gerar_analise_ia(partida) # Agora recebe um objeto JSON (dicionário) diretamente
+    dados_ia, erro = ai_analyzer.gerar_analise_ia(partida)
 
     if erro:
         current_app.logger.error(f"Erro retornado pelo gerador de IA para '{partida_info}': {erro}")
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "detalhes": [erro], "error": True}
     
     try:
-        # A validação e conversão para JSON já foi feita em ai_analyzer.py
-        # A variável dados_ia já é um dicionário Python.
-        
         recomendacao_final = dados_ia.get("mercado_principal", "Ver Análise Detalhada")
         analise_json = dados_ia.get("analise_detalhada", {})
+        stats_json = dados_ia.get("outras_analises", {})
         dados_brutos = dados_ia.get("dados_utilizados", {})
         
         html_parts = []
+        
+        # --- Título da Análise Principal ---
+        html_parts.append("<h2 style='border-bottom: 2px solid #007bff; padding-bottom: 5px; margin-top: 0;'>Análise Principal</h2>")
+        
         html_parts.append("<b>Análise de Desempenho Recente</b>")
         dm = analise_json.get('desempenho_mandante', {})
         html_parts.append(f"<br><b>{partida['mandante_nome']}:</b>")
@@ -71,20 +73,39 @@ def analisar_partida(partida, analysis_date):
         html_parts.append("<b>Cenário de Maior Probabilidade</b>")
         html_parts.append(f"<ul><li><b>{cp.get('mercado', 'N/A')}:</b> {cp.get('justificativa', 'N/A')}</li></ul>")
         
-        html_parts.append("<b>Base de Dados Utilizada na Análise</b><br>")
-        html_parts.append("As informações abaixo serviram de fundamento para a análise e as tendências apontadas.<br><br>")
+        # --- Título das Outras Análises ---
+        html_parts.append("<h2 style='border-bottom: 2px solid #6c757d; padding-bottom: 5px; margin-top: 2em;'>Outras Análises</h2>")
+        analise_escanteios_html = str(stats_json.get('analise_escanteios', 'N/A')).replace('\n', '<br>')
+        html_parts.append(f"<b>Análise de Escanteios</b><br>{analise_escanteios_html}<br><br>")
+        analise_cartoes_html = str(stats_json.get('analise_cartoes', 'N/A')).replace('\n', '<br>')
+        html_parts.append(f"<b>Análise de Cartões</b><br>{analise_cartoes_html}<br><br>")
+        analise_impedimentos_html = str(stats_json.get('analise_impedimentos', 'N/A')).replace('\n', '<br>')
+        html_parts.append(f"<b>Análise de Impedimentos</b><br>{analise_impedimentos_html}<br><br>")
+
+        # --- Título da Base de Dados ---
+        html_parts.append("<h2 style='border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-top: 2em;'>Base de Dados Utilizada</h2>")
+        html_parts.append("<p>As informações abaixo serviram de fundamento para a análise e as tendências apontadas.</p>")
+        
+        # Dados de Resultados
         ultimos_jogos_mandante_html = str(dados_brutos.get('ultimos_jogos_mandante', 'N/A')).replace('\n', '<br>')
         ultimos_jogos_visitante_html = str(dados_brutos.get('ultimos_jogos_visitante', 'N/A')).replace('\n', '<br>')
         ultimos_confrontos_diretos_html = str(dados_brutos.get('ultimos_confrontos_diretos', 'N/A')).replace('\n', '<br>')
-        html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']}:</b><br>{ultimos_jogos_mandante_html}<br><br>")
-        html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']}:</b><br>{ultimos_jogos_visitante_html}<br><br>")
-        html_parts.append(f"<b>Últimos 5 Confrontos Diretos:</b><br>{ultimos_confrontos_diretos_html}")
+        html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']} (Resultados):</b><br>{ultimos_jogos_mandante_html}<br><br>")
+        html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']} (Resultados):</b><br>{ultimos_jogos_visitante_html}<br><br>")
+        html_parts.append(f"<b>Últimos 5 Confrontos Diretos (Resultados):</b><br>{ultimos_confrontos_diretos_html}<br><br>")
         
+        # Dados de Estatísticas (já vêm formatados em HTML)
+        stats_mandante_html = dados_brutos.get('stats_ultimos_jogos_mandante', '<p>N/A</p>')
+        stats_visitante_html = dados_brutos.get('stats_ultimos_jogos_visitante', '<p>N/A</p>')
+        stats_h2h_html = dados_brutos.get('stats_ultimos_confrontos_diretos', '<p>N/A</p>')
+        html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']} (Estatísticas):</b>{stats_mandante_html}<br>")
+        html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']} (Estatísticas):</b>{stats_visitante_html}<br>")
+        html_parts.append(f"<b>Últimos 5 Confrontos Diretos (Estatísticas):</b>{stats_h2h_html}")
+
         analise_completa = "".join(html_parts)
         
         resultado_final = {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": recomendacao_final, "detalhes": [analise_completa], "liga_nome": partida['liga_nome']}
 
-        # Ao guardar no banco, convertemos o dicionário final para uma string JSON
         nova_analise = Analysis(match_api_id=partida['id'], analysis_date=analysis_date, content=json.dumps(resultado_final))
         db.session.add(nova_analise)
         db.session.commit()

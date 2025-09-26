@@ -35,7 +35,10 @@ def buscar_jogos_do_dia(id_liga, nome_liga, data):
     """Busca os jogos do dia na API-Football."""
     current_app.logger.info(f"Buscando jogos para '{nome_liga}' (ID: {id_liga}) na data: {data}...")
     url = f"{BASE_URL}fixtures"
-    params = {"league": id_liga, "season": "2024", "date": data}
+    
+    ano_da_temporada = data.split('-')[0]
+    params = {"league": id_liga, "season": ano_da_temporada, "date": data}
+
     try:
         response = requests.get(url, headers=HEADERS, params=params, timeout=15)
         response.raise_for_status()
@@ -66,7 +69,7 @@ def buscar_jogos_do_dia(id_liga, nome_liga, data):
         return []
 
 def buscar_ultimos_jogos(time_id: int):
-    """Busca os últimos 5 jogos de um time e formata a saída."""
+    """Busca os últimos 5 jogos de um time e formata a saída, retornando também os IDs dos jogos."""
     current_app.logger.info(f"Buscando últimos 5 jogos para o time ID: {time_id}")
     url = f"{BASE_URL}fixtures"
     params = {'team': time_id, 'last': 5}
@@ -76,24 +79,27 @@ def buscar_ultimos_jogos(time_id: int):
         jogos = response.json().get('response', [])
         
         resultados_formatados = []
+        jogos_ids = []
         for jogo in jogos:
             fixture = jogo.get('fixture', {})
             teams = jogo.get('teams', {})
             goals = jogo.get('goals', {})
             data_jogo = datetime.fromisoformat(fixture.get('date')).strftime('%d.%m.%Y')
             
+            jogos_ids.append(fixture.get('id'))
             resultado = (f"{data_jogo} | "
                          f"{teams['home']['name']} {goals.get('home', 'N/A')} vs "
                          f"{goals.get('away', 'N/A')} {teams['away']['name']}")
             resultados_formatados.append(resultado)
             
-        return "\n".join(resultados_formatados) if resultados_formatados else "Nenhum dado recente encontrado."
+        texto_formatado = "\n".join(resultados_formatados) if resultados_formatados else "Nenhum dado recente encontrado."
+        return texto_formatado, jogos_ids
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Erro ao buscar últimos jogos para o time ID {time_id}: {e}")
-        return "Erro ao buscar dados."
+        return "Erro ao buscar dados.", []
 
 def buscar_h2h(time1_id: int, time2_id: int):
-    """Busca os últimos 5 confrontos diretos entre dois times."""
+    """Busca os últimos 5 confrontos diretos, retornando também os IDs dos jogos."""
     current_app.logger.info(f"Buscando H2H entre os times: {time1_id} vs {time2_id}")
     url = f"{BASE_URL}fixtures/headtohead"
     params = {'h2h': f"{time1_id}-{time2_id}", 'last': 5}
@@ -103,18 +109,70 @@ def buscar_h2h(time1_id: int, time2_id: int):
         jogos = response.json().get('response', [])
         
         resultados_formatados = []
+        jogos_ids = []
         for jogo in jogos:
             fixture = jogo.get('fixture', {})
             teams = jogo.get('teams', {})
             goals = jogo.get('goals', {})
             data_jogo = datetime.fromisoformat(fixture.get('date')).strftime('%d.%m.%Y')
             
+            jogos_ids.append(fixture.get('id'))
             resultado = (f"{data_jogo} | "
                          f"{teams['home']['name']} {goals.get('home', 'N/A')} vs "
                          f"{goals.get('away', 'N/A')} {teams['away']['name']}")
             resultados_formatados.append(resultado)
             
-        return "\n".join(resultados_formatados) if resultados_formatados else "Nenhum confronto direto encontrado."
+        texto_formatado = "\n".join(resultados_formatados) if resultados_formatados else "Nenhum confronto direto encontrado."
+        return texto_formatado, jogos_ids
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Erro ao buscar H2H para os times {time1_id} e {time2_id}: {e}")
-        return "Erro ao buscar dados de H2H."
+        return "Erro ao buscar dados de H2H.", []
+
+def buscar_estatisticas_jogos(jogos_ids: list):
+    """Busca estatísticas para uma lista de IDs de jogos e retorna uma string simples formatada."""
+    if not jogos_ids:
+        return "Nenhuma partida para analisar."
+
+    all_stats = []
+    for jogo_id in jogos_ids:
+        try:
+            url = f"{BASE_URL}fixtures/statistics"
+            params = {'fixture': jogo_id}
+            response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json().get('response', [])
+            
+            if not data or len(data) < 2: continue
+            
+            home_team_data = data[0]
+            away_team_data = data[1]
+
+            stats_jogo = {
+                'home': {'team_name': home_team_data['team']['name'], 'corners': 0, 'cards': 0, 'offsides': 0},
+                'away': {'team_name': away_team_data['team']['name'], 'corners': 0, 'cards': 0, 'offsides': 0}
+            }
+            
+            for team_data in [home_team_data, away_team_data]:
+                team_side = 'home' if team_data['team']['id'] == home_team_data['team']['id'] else 'away'
+                for stat in team_data['statistics']:
+                    stat_type = stat.get('type')
+                    stat_value = stat.get('value')
+                    if stat_value is None: stat_value = 0
+                    
+                    if stat_type == 'Corner Kicks':
+                        stats_jogo[team_side]['corners'] = stat_value
+                    elif stat_type in ['Yellow Cards', 'Red Cards']:
+                        stats_jogo[team_side]['cards'] += int(stat_value)
+                    elif stat_type == 'Offsides':
+                        stats_jogo[team_side]['offsides'] = stat_value
+            
+            # --- FORMATO SIMPLES RESTAURADO ---
+            stats_line = (f"{stats_jogo['home']['team_name']} (Escanteios: {stats_jogo['home']['corners']}, Cartões: {stats_jogo['home']['cards']}, Impedimentos: {stats_jogo['home']['offsides']}) vs "
+                          f"{stats_jogo['away']['team_name']} (Escanteios: {stats_jogo['away']['corners']}, Cartões: {stats_jogo['away']['cards']}, Impedimentos: {stats_jogo['away']['offsides']})")
+            all_stats.append(stats_line)
+
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Erro ao buscar estatísticas para o jogo ID {jogo_id}: {e}")
+            continue
+
+    return "\n".join(all_stats) if all_stats else "Nenhuma estatística encontrada."
