@@ -55,7 +55,21 @@ def confirmed_required(f):
 @main.route("/")
 @main.route("/home")
 def index():
-    return redirect(url_for('main.futebol'))
+    # Busca as 4 análises mais recentes do banco de dados
+    recent_analyses_db = Analysis.query.order_by(Analysis.generated_at.desc()).limit(4).all()
+    
+    # Processa as análises para passar ao template
+    analyses_list = []
+    for analysis_obj in recent_analyses_db:
+        try:
+            analysis_data = json.loads(analysis_obj.content)
+            analysis_data['analysis_id'] = analysis_obj.id
+            analyses_list.append(analysis_data)
+        except json.JSONDecodeError:
+            continue
+            
+    return render_template('home.html', title='Início', analyses=analyses_list)
+
 
 @main.route("/futebol")
 @login_required

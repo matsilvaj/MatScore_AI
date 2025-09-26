@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{# Importa o nosso novo componente de card #}
+{% from '_macros.html' import render_match_card %}
+
+{% block content %}
+    <div class="hero">
+        <hgroup>
+            <h1>Análises Desportivas com Inteligência Artificial</h1>
+            <p>Use os dados a seu favor. Obtenha insights e cenários prováveis para jogos de futebol e muito mais.</p>
+        </hgroup>
+        {% if not current_user.is_authenticated %}
+        <a href="{{ url_for('main.register') }}" role="button" class="contrast">Crie a sua conta gratuita</a>
+        {% endif %}
+    </div>
+
+    <div class="preview-section">
+        <h2>Últimas Análises de Futebol</h2>
+        
+        {% if analyses %}
+            <div class="carousel-wrapper">
+                <div class="carousel-track">
+                    {% for analysis in analyses %}
+                        <div class="carousel-item">
+                            {{ render_match_card(analysis) }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button class="carousel-button prev" aria-label="Anterior">&lt;</button>
+                <button class="carousel-button next" aria-label="Próximo">&gt;</button>
+            </div>
+        {% else %}
+            <p style="text-align: center;">Nenhuma análise recente encontrada.</p>
+        {% endif %}
+
+        <div class="centered-link">
+            <a href="{{ url_for('main.futebol') }}">Ver todas as análises de futebol &rarr;</a>
+        </div>
+    </div>
+    
+    <div class="preview-section disabled">
+        <h2>Análises de Basquete</h2>
+        <h3 class="coming-soon">🚀 Em Breve!</h3>
+        <p>Estamos a trabalhar para trazer o mesmo nível de análise para o mundo do basquete.</p>
+    </div>
+
+{% endblock %}

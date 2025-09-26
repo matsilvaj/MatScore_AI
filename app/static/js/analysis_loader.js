@@ -29,6 +29,7 @@ function initializeAnalysisLoader(apiUrl) {
         eventSource = new EventSource(fullApiUrl);
 
         let currentLeagueContainer = null;
+        let leagueId = '';
 
         eventSource.onmessage = function(event) {
             const resultado = JSON.parse(event.data);
@@ -41,13 +42,15 @@ function initializeAnalysisLoader(apiUrl) {
             if (resultado.status) {
                 switch (resultado.status) {
                     case 'league_start':
-                        const leagueId = resultado.liga_nome.replace(/\s+/g, '-').toLowerCase();
+                        leagueId = resultado.liga_nome.replace(/\s+/g, '-').toLowerCase();
+                        // ** MUDANÇA AQUI: Criar um elemento <details> para a liga **
                         container.insertAdjacentHTML('beforeend', `
-                            <div class="league-container" id="container-${leagueId}">
-                                <h3>${resultado.liga_nome}</h3>
-                            </div>
+                            <details id="container-${leagueId}" open>
+                                <summary>${resultado.liga_nome}</summary>
+                                <div class="grid league-grid"></div>
+                            </details>
                         `);
-                        currentLeagueContainer = document.getElementById(`container-${leagueId}`);
+                        currentLeagueContainer = document.querySelector(`#container-${leagueId} .league-grid`);
                         break;
                     case 'no_games':
                         break;
@@ -55,7 +58,7 @@ function initializeAnalysisLoader(apiUrl) {
                         if (container.children.length <= 1) { // Apenas o H2 está lá
                             container.insertAdjacentHTML('beforeend', `<p>Nenhum jogo encontrado para esta data.</p>`);
                         }
-                        container.insertAdjacentHTML('beforeend', `<p style="text-align: center; color: var(--success);">✅ Busca Concluída!</p>`);
+                        container.insertAdjacentHTML('beforeend', `<p style="text-align: center; color: var(--success); margin-top: 2em;">✅ Busca Concluída!</p>`);
                         eventSource.close();
                         break;
                 }
@@ -64,6 +67,7 @@ function initializeAnalysisLoader(apiUrl) {
 
             if (!currentLeagueContainer) return;
 
+            // O HTML do card em si não muda, apenas onde ele é inserido
             const cardHtml = `
                 <article class="match-card">
                     <div class="match-card-header">
@@ -79,10 +83,11 @@ function initializeAnalysisLoader(apiUrl) {
                     </div>
                     <footer>
                         <p><b>Cenário Provável:</b> ${resultado.recomendacao}</p>
-                        <a href="/analysis/${resultado.analysis_id}" role="button">Ver Análise Detalhada</a>
+                        <a href="/analysis/${resultado.analysis_id}" role="button" class="outline">Ver Análise</a>
                     </footer>
                 </article>
             `;
+            // Insere o card dentro da grelha da liga
             currentLeagueContainer.insertAdjacentHTML('beforeend', cardHtml);
         };
 

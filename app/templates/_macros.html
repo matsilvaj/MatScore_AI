@@ -1,0 +1,23 @@
+{# Este macro renderiza um card de jogo com base nos dados de uma análise #}
+{% macro render_match_card(analysis) %}
+<article class="match-card">
+    <div class="match-card-header">
+        <div class="team">
+            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+            <strong>{{ analysis.mandante_nome }}</strong>
+        </div>
+        <span class="vs">vs</span>
+        <div class="team">
+            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+            <strong>{{ analysis.visitante_nome }}</strong>
+        </div>
+    </div>
+    <footer class="match-card-footer">
+        <div class="scenario">
+            <span>Cenário Provável:</span>
+            <strong>{{ analysis.recomendacao }}</strong>
+        </div>
+        <a href="{{ url_for('main.analysis_detail', analysis_id=analysis.analysis_id) }}" role="button" class="outline">Ver Análise</a>
+    </footer>
+</article>
+{% endmacro %}
