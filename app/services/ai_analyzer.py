@@ -1,7 +1,9 @@
-# app/services/ai_analyzer.py
+# app/services/ai_analyzer.py (Com validação JSON)
 import os
 import openai
+import json
 from flask import current_app
+from . import football_api
 
 client = None
 try:
@@ -15,47 +17,65 @@ except Exception as e:
     print(f"❌ ERRO: Não foi possível configurar a IA da OpenAI. Erro: {e}")
 
 def gerar_analise_ia(partida):
-    """Gera a análise de uma partida usando o modelo da OpenAI (ChatGPT)."""
+    """Gera a análise de uma partida usando dados da API e o modelo da OpenAI."""
     if not client:
         current_app.logger.error("Tentativa de gerar análise com o cliente da OpenAI não configurado.")
-        return "Erro na IA", "IA não configurada."
+        return None, "Erro na IA: IA não configurada."
     
+    # 1. Buscar dados da API
+    ultimos_jogos_mandante = football_api.buscar_ultimos_jogos(partida['mandante_id'])
+    ultimos_jogos_visitante = football_api.buscar_ultimos_jogos(partida['visitante_id'])
+    confrontos_diretos = football_api.buscar_h2h(partida['mandante_id'], partida['visitante_id'])
+
+    # 2. Preparar dados formatados
+    dados_formatados_mandante = ultimos_jogos_mandante.replace("\n", "\\n")
+    dados_formatados_visitante = ultimos_jogos_visitante.replace("\n", "\\n")
+    dados_formatados_h2h = confrontos_diretos.replace("\n", "\\n")
+
+    # 3. Prompt focado em mercados conservadores
     prompt = f"""
-    Você é o "Mat, o Analista", um especialista em dados esportivos. Sua tarefa é criar um relatório de análise pré-jogo para a partida entre {partida['mandante_nome']} e {partida['visitante_nome']}.
+    Você é o "Mat, o Analista", um especialista em apostas esportivas CONSERVADORAS.
+    Crie um relatório pré-jogo para a partida entre {partida['mandante_nome']} e {partida['visitante_nome']}, 
+    utilizando os dados fornecidos. 
 
-    Sua resposta deve ser 100% neutra e informativa, preenchendo a estrutura JSON solicitada. Baseie-se em conhecimentos gerais e estatísticos do futebol para preencher os campos.
+    ⚠️ INSTRUÇÕES IMPORTANTES:
+    - Sugira APENAS mercados conservadores e de baixa variância, como:
+      * Dupla Chance (1X, X2, 12)
+      * Under 3.5, 4.5... | Over 0.5, 1.5...
+      * Handicap +1.5, +2.5...
+    - Sugerir mercados de risco como "Mais de 2.5 gols", "Resultado", "Handicap -0,5, ...", Apenas se existir um padrão muito forte e justificado.
+    - O objetivo é **segurança** e **consistência**, não ousadia.
 
-    SEÇÕES DA ANÁLISE:
-    1.  Análise de Desempenho Recente ({partida['mandante_nome']}): Forma, Ponto Forte, Ponto Fraco.
-    2.  Análise de Desempenho Recente ({partida['visitante_nome']}): Forma, Ponto Forte, Ponto Fraco.
-    3.  Análise do Confronto Direto: Análise detalhada do H2H (histórico de confrontos).
-    4.  Informações Relevantes: Comentários sobre fator casa, momento, lesões, etc.
-    5.  Mercados Favoráveis da Partida: 3 mercados com justificativas.
-    6.  Cenário de Maior Probabilidade: O mercado MAIS CONSERVADOR com justificativa final.
-    7.  Base de Dados Utilizada: (Opcional) Liste os últimos jogos de cada equipe e H2H se tiver essa informação.
+    DADOS PARA ANÁLISE:
+    - Últimos 5 jogos de {partida['mandante_nome']}:
+    {ultimos_jogos_mandante}
+
+    - Últimos 5 jogos de {partida['visitante_nome']}:
+    {ultimos_jogos_visitante}
+
+    - Últimos 5 confrontos diretos:
+    {confrontos_diretos}
 
     ---
-    ATENÇÃO: Responda OBRIGATORIAMENTE em formato JSON. A sua resposta final deve ser um único bloco de código JSON, sem nenhum texto ou formatação fora dele. Antes de finalizar, valide a sintaxe do seu JSON para garantir que todas as vírgulas, aspas e chaves estão corretas.
-
-    A estrutura deve ser a seguinte:
+    Estrutura JSON obrigatória:
     {{
-      "mercado_principal": "Nome do mercado de maior probabilidade",
+      "mercado_principal": "Nome do mercado mais conservador",
       "analise_detalhada": {{
-        "desempenho_mandante": {{"forma": "...", "ponto_forte": "...", "ponto_fraco": "..."}},
-        "desempenho_visitante": {{"forma": "...", "ponto_forte": "...", "ponto_fraco": "..."}},
+        "desempenho_mandante": {{"forma": "...", "ponto_forte": "...", "ponto_fraco": "..." }},
+        "desempenho_visitante": {{"forma": "...", "ponto_forte": "...", "ponto_fraco": "..." }},
         "confronto_direto": "...",
         "informacoes_relevantes": "...",
         "mercados_favoraveis": [
-            {{"mercado": "...", "justificativa": "..."}},
-            {{"mercado": "...", "justificativa": "..."}},
-            {{"mercado": "...", "justificativa": "..."}}
+            {{"mercado": "...", "justificativa": "..." }},
+            {{"mercado": "...", "justificativa": "..." }},
+            {{"mercado": "...", "justificativa": "..." }}
         ],
-        "cenario_provavel": {{"mercado": "...", "justificativa": "..."}}
+        "cenario_provavel": {{"mercado": "...", "justificativa": "..." }}
       }},
       "dados_utilizados": {{
-        "ultimos_jogos_mandante": "dd.mm.aaaa | ...\\ndd.mm.aaaa | ...",
-        "ultimos_jogos_visitante": "dd.mm.aaaa | ...\\ndd.mm.aaaa | ...",
-        "ultimos_confrontos_diretos": "dd.mm.aaaa | ...\\ndd.mm.aaaa | ..."
+        "ultimos_jogos_mandante": "{dados_formatados_mandante}",
+        "ultimos_jogos_visitante": "{dados_formatados_visitante}",
+        "ultimos_confrontos_diretos": "{dados_formatados_h2h}"
       }}
     }}
     """
@@ -65,21 +85,22 @@ def gerar_analise_ia(partida):
         
         chat_completion = client.chat.completions.create(
             messages=[
-                {
-                    "role": "system",
-                    "content": "Você é um analista de dados esportivos especialista em futebol.",
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
+                {"role": "system", "content": "Você é um analista esportivo que gera análises CONSERVADORAS em formato JSON."},
+                {"role": "user", "content": prompt}
             ],
-            model="gpt-3.5-turbo", # Você pode escolher um modelo mais avançado se preferir
-            response_format={ "type": "json_object" }
+            model="gpt-4o",
+            response_format={"type": "json_object"},
+            temperature=0.2
         )
         
         response_text = chat_completion.choices[0].message.content
-        return response_text.strip(), None
+        response_json = json.loads(response_text) # Valida e converte a string JSON para um objeto Python
+        return response_json, None # Retorna o objeto JSON, não a string
+
+    except json.JSONDecodeError as e:
+        current_app.logger.error(f"Erro ao validar JSON da IA para {partida['mandante_nome']} vs {partida['visitante_nome']}: {e}")
+        current_app.logger.warning(f"--- JSON INVÁLIDO RECEBIDO --- \n{response_text}\n-----------------------------")
+        return None, "Erro no formato da resposta da IA. Não foi possível decodificar o JSON."
         
     except Exception as e:
         current_app.logger.error(f"Erro ao gerar análise da IA para {partida['mandante_nome']} vs {partida['visitante_nome']}: {e}")

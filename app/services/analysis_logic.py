@@ -8,13 +8,13 @@ from flask import current_app
 # --- GESTÃO DE CACHE MANUAL PARA AS LIGAS ---
 def obter_ligas_disponiveis():
     """Busca as ligas da API ou do cache. Deve ser chamada dentro de um contexto de app."""
-    cached_ligas = cache.get("lista_de_ligas_futebol") # Chave de cache atualizada
+    cached_ligas = cache.get("lista_de_ligas_futebol")
     if cached_ligas:
         current_app.logger.info("Lista de ligas encontrada no cache.")
         return cached_ligas
     
     ligas = football_api.carregar_ligas_da_api()
-    cache.set("lista_de_ligas_futebol", ligas, timeout=86400) # Cache por 24 horas
+    cache.set("lista_de_ligas_futebol", ligas, timeout=86400)
     return ligas
 
 def analisar_partida(partida, analysis_date):
@@ -33,15 +33,15 @@ def analisar_partida(partida, analysis_date):
         return resultado_cache
 
     current_app.logger.info(f"--> Análise para '{partida_info}' não encontrada no cache. Gerando com a IA...")
-    texto_completo_ia, erro = ai_analyzer.gerar_analise_ia(partida)
+    dados_ia, erro = ai_analyzer.gerar_analise_ia(partida) # Agora recebe um objeto JSON (dicionário) diretamente
 
     if erro:
         current_app.logger.error(f"Erro retornado pelo gerador de IA para '{partida_info}': {erro}")
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "detalhes": [erro], "error": True}
     
     try:
-        # A API da OpenAI com response_format="json_object" já retorna um JSON limpo
-        dados_ia = json.loads(texto_completo_ia)
+        # A validação e conversão para JSON já foi feita em ai_analyzer.py
+        # A variável dados_ia já é um dicionário Python.
         
         recomendacao_final = dados_ia.get("mercado_principal", "Ver Análise Detalhada")
         analise_json = dados_ia.get("analise_detalhada", {})
@@ -84,6 +84,7 @@ def analisar_partida(partida, analysis_date):
         
         resultado_final = {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": recomendacao_final, "detalhes": [analise_completa], "liga_nome": partida['liga_nome']}
 
+        # Ao guardar no banco, convertemos o dicionário final para uma string JSON
         nova_analise = Analysis(match_api_id=partida['id'], analysis_date=analysis_date, content=json.dumps(resultado_final))
         db.session.add(nova_analise)
         db.session.commit()
@@ -92,10 +93,6 @@ def analisar_partida(partida, analysis_date):
         resultado_final['analysis_id'] = nova_analise.id
         return resultado_final
 
-    except json.JSONDecodeError as e:
-        current_app.logger.error(f"Erro de JSONDecode ao processar análise da IA para '{partida_info}': {e}")
-        current_app.logger.warning(f"--- JSON INVÁLIDO RECEBIDO --- \n{texto_completo_ia}\n-----------------------------")
-        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro ao processar análise.", "error": True}
     except Exception as e:
         current_app.logger.error(f"Erro inesperado ao processar a resposta da IA para '{partida_info}': {e}")
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro inesperado.", "error": True}
