@@ -3,7 +3,7 @@ Flask_SQLAlchemy
 Flask_Login
 Flask_Bcrypt
 requests
-google_generativeai
+openai
 python_dotenv
 Flask_Caching
 flask_mail

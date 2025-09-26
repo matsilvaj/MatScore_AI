@@ -1,3 +1,4 @@
+# app/services/analysis_logic.py
 import json
 from app import cache, db
 from . import football_api, ai_analyzer
@@ -7,16 +8,14 @@ from flask import current_app
 # --- GESTÃO DE CACHE MANUAL PARA AS LIGAS ---
 def obter_ligas_disponiveis():
     """Busca as ligas da API ou do cache. Deve ser chamada dentro de um contexto de app."""
-    cached_ligas = cache.get("lista_de_ligas")
+    cached_ligas = cache.get("lista_de_ligas_futebol") # Chave de cache atualizada
     if cached_ligas:
         current_app.logger.info("Lista de ligas encontrada no cache.")
         return cached_ligas
     
     ligas = football_api.carregar_ligas_da_api()
-    cache.set("lista_de_ligas", ligas, timeout=86400) # Cache por 24 horas
+    cache.set("lista_de_ligas_futebol", ligas, timeout=86400) # Cache por 24 horas
     return ligas
-
-# --- As definições de LIGAS foram removidas daqui para evitar o erro de contexto ---
 
 def analisar_partida(partida, analysis_date):
     """Gera a análise de uma partida, com logging e tratamento de erros."""
@@ -41,8 +40,8 @@ def analisar_partida(partida, analysis_date):
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "detalhes": [erro], "error": True}
     
     try:
-        clean_json_str = texto_completo_ia.strip().replace('```json', '').replace('```', '')
-        dados_ia = json.loads(clean_json_str)
+        # A API da OpenAI com response_format="json_object" já retorna um JSON limpo
+        dados_ia = json.loads(texto_completo_ia)
         
         recomendacao_final = dados_ia.get("mercado_principal", "Ver Análise Detalhada")
         analise_json = dados_ia.get("analise_detalhada", {})
@@ -57,8 +56,8 @@ def analisar_partida(partida, analysis_date):
         html_parts.append(f"<b>{partida['visitante_nome']}:</b>")
         html_parts.append(f"<ul><li><b>Forma:</b> {dv.get('forma', 'N/A')}</li><li><b>Ponto Forte:</b> {dv.get('ponto_forte', 'N/A')}</li><li><b>Ponto Fraco:</b> {dv.get('ponto_fraco', 'N/A')}</li></ul>")
         
-        confronto_direto_html = analise_json.get('confronto_direto', 'N/A').replace('\n', '<br>')
-        informacoes_relevantes_html = analise_json.get('informacoes_relevantes', 'N/A').replace('\n', '<br>')
+        confronto_direto_html = str(analise_json.get('confronto_direto', 'N/A')).replace('\n', '<br>')
+        informacoes_relevantes_html = str(analise_json.get('informacoes_relevantes', 'N/A')).replace('\n', '<br>')
         html_parts.append(f"<b>Análise do Confronto Direto</b><br>{confronto_direto_html}<br><br>")
         html_parts.append(f"<b>Informações Relevantes (Elenco e Contexto)</b><br>{informacoes_relevantes_html}<br><br>")
         
@@ -74,9 +73,9 @@ def analisar_partida(partida, analysis_date):
         
         html_parts.append("<b>Base de Dados Utilizada na Análise</b><br>")
         html_parts.append("As informações abaixo serviram de fundamento para a análise e as tendências apontadas.<br><br>")
-        ultimos_jogos_mandante_html = dados_brutos.get('ultimos_jogos_mandante', 'N/A').replace('\n', '<br>')
-        ultimos_jogos_visitante_html = dados_brutos.get('ultimos_jogos_visitante', 'N/A').replace('\n', '<br>')
-        ultimos_confrontos_diretos_html = dados_brutos.get('ultimos_confrontos_diretos', 'N/A').replace('\n', '<br>')
+        ultimos_jogos_mandante_html = str(dados_brutos.get('ultimos_jogos_mandante', 'N/A')).replace('\n', '<br>')
+        ultimos_jogos_visitante_html = str(dados_brutos.get('ultimos_jogos_visitante', 'N/A')).replace('\n', '<br>')
+        ultimos_confrontos_diretos_html = str(dados_brutos.get('ultimos_confrontos_diretos', 'N/A')).replace('\n', '<br>')
         html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']}:</b><br>{ultimos_jogos_mandante_html}<br><br>")
         html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']}:</b><br>{ultimos_jogos_visitante_html}<br><br>")
         html_parts.append(f"<b>Últimos 5 Confrontos Diretos:</b><br>{ultimos_confrontos_diretos_html}")
@@ -97,19 +96,21 @@ def analisar_partida(partida, analysis_date):
         current_app.logger.error(f"Erro de JSONDecode ao processar análise da IA para '{partida_info}': {e}")
         current_app.logger.warning(f"--- JSON INVÁLIDO RECEBIDO --- \n{texto_completo_ia}\n-----------------------------")
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro ao processar análise.", "error": True}
+    except Exception as e:
+        current_app.logger.error(f"Erro inesperado ao processar a resposta da IA para '{partida_info}': {e}")
+        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro inesperado.", "error": True}
+
 
 def gerar_analises(data_para_buscar, user_tier='free'):
     """Gera o stream de análises, com cache de partidas e logging."""
     from app import db 
 
-    # --- DEFINIÇÃO DAS LIGAS MOVIDA PARA DENTRO DA FUNÇÃO ---
     LIGAS_DISPONIVEIS = obter_ligas_disponiveis()
     LIGAS_GRATUITAS = {
-        "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", "BSA"),
-        "LaLiga": LIGAS_DISPONIVEIS.get("LaLiga", "PD")
+        "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", 71),
+        "La Liga": LIGAS_DISPONIVEIS.get("La Liga", 140)
     }
     LIGAS_MEMBROS = LIGAS_DISPONIVEIS
-    # -----------------------------------------------------------
 
     watchlist = LIGAS_GRATUITAS if user_tier == 'free' else LIGAS_MEMBROS
     jogos_encontrados_total = 0

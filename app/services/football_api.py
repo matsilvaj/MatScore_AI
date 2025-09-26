@@ -1,48 +1,65 @@
+# app/services/football_api.py
 import requests
 import os
-from flask import current_app # Importa o current_app para acessar o logger
+from flask import current_app
 
-API_TOKEN_FD = os.getenv('API_TOKEN_FD')
-HEADERS_FD = {"X-Auth-Token": API_TOKEN_FD}
+API_KEY = os.getenv('API_FOOTBALL_KEY')
+API_HOST = "v3.football.api-sports.io"
+HEADERS = {
+    'x-rapidapi-host': API_HOST,
+    'x-rapidapi-key': API_KEY
+}
+BASE_URL = "https://v3.football.api-sports.io/"
 
 def carregar_ligas_da_api():
-    """Busca todas as competições disponíveis na API e as formata num dicionário."""
-    current_app.logger.info("Buscando lista de ligas da API externa.")
-    url = "https://api.football-data.org/v4/competitions"
+    """Busca as competições disponíveis na API-Football."""
+    current_app.logger.info("Buscando lista de ligas da API-Football.")
+    url = f"{BASE_URL}leagues"
     ligas = {}
     try:
-        response = requests.get(url, headers=HEADERS_FD, timeout=10) # Adiciona um timeout
-        response.raise_for_status()  # Levanta um erro para respostas 4xx ou 5xx
-        dados = response.json()
-        for competicao in dados.get('competitions', []):
-            if competicao.get('code'):
-                ligas[competicao['name']] = competicao['code']
-        current_app.logger.info(f"{len(ligas)} ligas carregadas com sucesso da API.")
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+        dados = response.json().get('response', [])
+        for item in dados:
+            liga_info = item.get('league')
+            if liga_info:
+                ligas[liga_info['name']] = liga_info['id']
+        current_app.logger.info(f"{len(ligas)} ligas carregadas com sucesso da API-Football.")
         return ligas
     except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Não foi possível buscar as ligas da API. Erro: {e}")
-        # Retorna um fallback para que a aplicação não quebre totalmente
-        return {"Premier League": "PL", "Brasileirão Série A": "BSA"}
+        current_app.logger.error(f"Não foi possível buscar as ligas da API-Football. Erro: {e}")
+        return {"Premier League": 39, "Brasileirão Série A": 71} # Fallback
 
-def buscar_jogos_do_dia(codigo_liga, nome_liga, data):
-    """Busca os jogos do dia, agora com logging e tratamento de erros aprimorado."""
-    current_app.logger.info(f"Buscando jogos para '{nome_liga}' na data: {data}...")
-    url = f"https://api.football-data.org/v4/competitions/{codigo_liga}/matches"
-    params = {"dateFrom": data, "dateTo": data}
+def buscar_jogos_do_dia(id_liga, nome_liga, data):
+    """Busca os jogos do dia na API-Football."""
+    current_app.logger.info(f"Buscando jogos para '{nome_liga}' (ID: {id_liga}) na data: {data}...")
+    url = f"{BASE_URL}fixtures"
+    params = {"league": id_liga, "season": "2024", "date": data} # O ano da temporada pode precisar de ajuste
     try:
-        response = requests.get(url, headers=HEADERS_FD, params=params, timeout=10)
+        response = requests.get(url, headers=HEADERS, params=params, timeout=15)
         response.raise_for_status()
-        dados = response.json()
+        dados = response.json().get('response', [])
         lista_partidas = []
-        for jogo in dados.get('matches', []):
+        for jogo in dados:
+            fixture = jogo.get('fixture', {})
+            teams = jogo.get('teams', {})
+            home_team = teams.get('home', {})
+            away_team = teams.get('away', {})
+            league_info = jogo.get('league', {})
+            
             lista_partidas.append({
-                "id": jogo['id'], "data": jogo['utcDate'],
-                "mandante_id": jogo['homeTeam']['id'], "mandante_nome": jogo['homeTeam']['name'], "mandante_escudo": jogo['homeTeam']['crest'],
-                "visitante_id": jogo['awayTeam']['id'], "visitante_nome": jogo['awayTeam']['name'], "visitante_escudo": jogo['awayTeam']['crest'],
-                "liga_nome": jogo['competition']['name']
+                "id": fixture.get('id'),
+                "data": fixture.get('date'),
+                "mandante_id": home_team.get('id'),
+                "mandante_nome": home_team.get('name'),
+                "mandante_escudo": home_team.get('logo'),
+                "visitante_id": away_team.get('id'),
+                "visitante_nome": away_team.get('name'),
+                "visitante_escudo": away_team.get('logo'),
+                "liga_nome": league_info.get('name')
             })
         current_app.logger.info(f"--> {len(lista_partidas)} jogos encontrados para '{nome_liga}'.")
         return lista_partidas
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Erro ao buscar jogos do dia para {nome_liga}: {e}")
-        return [] # Retorna uma lista vazia em caso de falha
+        return []
