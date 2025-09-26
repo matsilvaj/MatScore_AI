@@ -1,46 +1,36 @@
 {% extends "layout.html" %}
 
-{% block styles %}
-<style>
-    .league-container { margin-bottom: 2em; }
-    .league-header { background-color: #f7f7f7; padding: 10px; border-radius: 8px 8px 0 0; border: 1px solid #ccc; border-bottom: 2px solid #ccc; }
-    .match-card { border: 1px solid #ccc; border-top: none; border-radius: 0 0 8px 8px; padding: 1em; }
-    .skeleton { animation: pulse 1.5s ease-in-out infinite; background-color: #f0f0f0; border-radius: 8px; padding: 1.5em; margin-bottom: 1em; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-    .cta-box { background-color: #e7f3ff; border-left: 6px solid #2196F3; padding: 15px; margin-top: 2em; margin-bottom: 2em; }
-    /* --- NOVO ESTILO PARA O CONTADOR --- */
-    .info-box { background-color: #fffbe6; border-left: 6px solid #ffc107; padding: 15px; margin-top: 2em; margin-bottom: 2em; }
-</style>
-{% endblock %}
-
 {% block content %}
-    <h1>Analisador Esportivo - Futebol</h1>
+    <div class="content-wrapper">
+        <hgroup>
+            <h1>Analisador Esportivo</h1>
+            <h2>Futebol</h2>
+        </hgroup>
 
-    {# --- LÓGICA ATUALIZADA PARA MOSTRAR MENSAGENS DIFERENTES --- #}
-    {% if not current_user.is_authenticated %}
-        <div class="cta-box">
-            <p><b>Gostou?</b> <a href="{{ url_for('main.register') }}">Crie uma conta</a> ou <a href="{{ url_for('main.login') }}">faça login</a> para começar a ver as análises detalhadas!</p>
-        </div>
-    {% elif current_user.subscription_tier == 'free' %}
-        <div class="info-box">
-            <p><b>Plano Gratuito:</b> Você já utilizou <strong>{{ views_today }} de 3</strong> análises detalhadas hoje.</p>
-        </div>
-        <div class="cta-box">
-            <p>Para ter acesso ilimitado a TODAS as ligas, <a href="{{ url_for('main.plans') }}"><b>torne-se Membro</b></a>!</p>
-        </div>
-    {% endif %}
+        {% if not current_user.is_authenticated %}
+            <article class="cta-box">
+                <p><b>Gostou?</b> <a href="{{ url_for('main.register') }}">Crie uma conta</a> ou <a href="{{ url_for('main.login') }}">faça login</a> para ver as análises detalhadas!</p>
+            </article>
+        {% elif current_user.subscription_tier == 'free' %}
+            <article class="info-box">
+                <p><b>Plano Gratuito:</b> Você já utilizou <strong>{{ views_today }} de 3</strong> análises detalhadas hoje. <a href="{{ url_for('main.plans') }}"><b>Faça um upgrade</b></a> para ter acesso ilimitado!</p>
+            </article>
+        {% endif %}
 
-    <div class="search-controls">
-        <label for="date-picker">Selecione a data:</label>
-        <input type="date" id="date-picker">
+        <label for="date-picker">
+            Selecione a data:
+            <input type="date" id="date-picker">
+        </label>
+        
+        <div id="resultados-container">
+            </div>
     </div>
-    <div id="resultados-container"></div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Ativa o nosso carregador de análises, passando a API correta
         initializeAnalysisLoader("{{ url_for('main.api_analise') }}");
     });
 </script>

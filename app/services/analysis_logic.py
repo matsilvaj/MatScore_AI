@@ -37,75 +37,23 @@ def analisar_partida(partida, analysis_date):
 
     if erro:
         current_app.logger.error(f"Erro retornado pelo gerador de IA para '{partida_info}': {erro}")
-        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "detalhes": [erro], "error": True}
+        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "error": True}
     
     try:
-        recomendacao_final = dados_ia.get("mercado_principal", "Ver Análise Detalhada")
-        analise_json = dados_ia.get("analise_detalhada", {})
-        stats_json = dados_ia.get("outras_analises", {})
-        dados_brutos = dados_ia.get("dados_utilizados", {})
+        # ** REATORAÇÃO PRINCIPAL AQUI **
+        # Agora, simplesmente combinamos os dados da partida com a resposta da IA.
+        resultado_final = {
+            "mandante_nome": partida['mandante_nome'],
+            "visitante_nome": partida['visitante_nome'],
+            "mandante_escudo": partida['mandante_escudo'],
+            "visitante_escudo": partida['visitante_escudo'],
+            "liga_nome": partida['liga_nome'],
+            "recomendacao": dados_ia.get("mercado_principal", "Ver Análise Detalhada"),
+            "analise_detalhada": dados_ia.get("analise_detalhada", {}),
+            "outras_analises": dados_ia.get("outras_analises", {}),
+            "dados_utilizados": dados_ia.get("dados_utilizados", {})
+        }
         
-        html_parts = []
-        
-        # --- Título da Análise Principal ---
-        html_parts.append("<h2 style='border-bottom: 2px solid #007bff; padding-bottom: 5px; margin-top: 0;'>Análise Principal</h2>")
-        
-        html_parts.append("<b>Análise de Desempenho Recente</b>")
-        dm = analise_json.get('desempenho_mandante', {})
-        html_parts.append(f"<br><b>{partida['mandante_nome']}:</b>")
-        html_parts.append(f"<ul><li><b>Forma:</b> {dm.get('forma', 'N/A')}</li><li><b>Ponto Forte:</b> {dm.get('ponto_forte', 'N/A')}</li><li><b>Ponto Fraco:</b> {dm.get('ponto_fraco', 'N/A')}</li></ul>")
-        dv = analise_json.get('desempenho_visitante', {})
-        html_parts.append(f"<b>{partida['visitante_nome']}:</b>")
-        html_parts.append(f"<ul><li><b>Forma:</b> {dv.get('forma', 'N/A')}</li><li><b>Ponto Forte:</b> {dv.get('ponto_forte', 'N/A')}</li><li><b>Ponto Fraco:</b> {dv.get('ponto_fraco', 'N/A')}</li></ul>")
-        
-        confronto_direto_html = str(analise_json.get('confronto_direto', 'N/A')).replace('\n', '<br>')
-        informacoes_relevantes_html = str(analise_json.get('informacoes_relevantes', 'N/A')).replace('\n', '<br>')
-        html_parts.append(f"<b>Análise do Confronto Direto</b><br>{confronto_direto_html}<br><br>")
-        html_parts.append(f"<b>Informações Relevantes (Elenco e Contexto)</b><br>{informacoes_relevantes_html}<br><br>")
-        
-        html_parts.append("<b>Mercados Favoráveis da Partida</b>")
-        html_parts.append("<ul>")
-        for mercado in analise_json.get('mercados_favoraveis', []):
-            html_parts.append(f"<li><b>{mercado.get('mercado', 'N/A')}:</b> {mercado.get('justificativa', 'N/A')}</li>")
-        html_parts.append("</ul>")
-        
-        cp = analise_json.get('cenario_provavel', {})
-        html_parts.append("<b>Cenário de Maior Probabilidade</b>")
-        html_parts.append(f"<ul><li><b>{cp.get('mercado', 'N/A')}:</b> {cp.get('justificativa', 'N/A')}</li></ul>")
-        
-        # --- Título das Outras Análises ---
-        html_parts.append("<h2 style='border-bottom: 2px solid #6c757d; padding-bottom: 5px; margin-top: 2em;'>Outras Análises</h2>")
-        analise_escanteios_html = str(stats_json.get('analise_escanteios', 'N/A')).replace('\n', '<br>')
-        html_parts.append(f"<b>Análise de Escanteios</b><br>{analise_escanteios_html}<br><br>")
-        analise_cartoes_html = str(stats_json.get('analise_cartoes', 'N/A')).replace('\n', '<br>')
-        html_parts.append(f"<b>Análise de Cartões</b><br>{analise_cartoes_html}<br><br>")
-        analise_impedimentos_html = str(stats_json.get('analise_impedimentos', 'N/A')).replace('\n', '<br>')
-        html_parts.append(f"<b>Análise de Impedimentos</b><br>{analise_impedimentos_html}<br><br>")
-
-        # --- Título da Base de Dados ---
-        html_parts.append("<h2 style='border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-top: 2em;'>Base de Dados Utilizada</h2>")
-        html_parts.append("<p>As informações abaixo serviram de fundamento para a análise e as tendências apontadas.</p>")
-        
-        # Dados de Resultados
-        ultimos_jogos_mandante_html = str(dados_brutos.get('ultimos_jogos_mandante', 'N/A')).replace('\n', '<br>')
-        ultimos_jogos_visitante_html = str(dados_brutos.get('ultimos_jogos_visitante', 'N/A')).replace('\n', '<br>')
-        ultimos_confrontos_diretos_html = str(dados_brutos.get('ultimos_confrontos_diretos', 'N/A')).replace('\n', '<br>')
-        html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']} (Resultados):</b><br>{ultimos_jogos_mandante_html}<br><br>")
-        html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']} (Resultados):</b><br>{ultimos_jogos_visitante_html}<br><br>")
-        html_parts.append(f"<b>Últimos 5 Confrontos Diretos (Resultados):</b><br>{ultimos_confrontos_diretos_html}<br><br>")
-        
-        # Dados de Estatísticas (já vêm formatados em HTML)
-        stats_mandante_html = dados_brutos.get('stats_ultimos_jogos_mandante', '<p>N/A</p>')
-        stats_visitante_html = dados_brutos.get('stats_ultimos_jogos_visitante', '<p>N/A</p>')
-        stats_h2h_html = dados_brutos.get('stats_ultimos_confrontos_diretos', '<p>N/A</p>')
-        html_parts.append(f"<b>Últimos 5 jogos do {partida['mandante_nome']} (Estatísticas):</b>{stats_mandante_html}<br>")
-        html_parts.append(f"<b>Últimos 5 jogos do {partida['visitante_nome']} (Estatísticas):</b>{stats_visitante_html}<br>")
-        html_parts.append(f"<b>Últimos 5 Confrontos Diretos (Estatísticas):</b>{stats_h2h_html}")
-
-        analise_completa = "".join(html_parts)
-        
-        resultado_final = {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": recomendacao_final, "detalhes": [analise_completa], "liga_nome": partida['liga_nome']}
-
         nova_analise = Analysis(match_api_id=partida['id'], analysis_date=analysis_date, content=json.dumps(resultado_final))
         db.session.add(nova_analise)
         db.session.commit()

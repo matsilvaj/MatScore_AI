@@ -1,111 +1,70 @@
 {% extends "layout.html" %}
 
-{% block styles %}
-<style>
-    .plans-container { 
-        display: flex; 
-        justify-content: center; 
-        gap: 2em; 
-        margin-top: 2em; 
-        flex-wrap: wrap; 
-    }
-    
-    .plan-card { 
-        border: 1px solid #ccc; 
-        border-radius: 8px; 
-        padding: 1.5em; 
-        width: 275px; /* Largura ajustada para caberem 3 na linha */
-        text-align: center; 
-        display: flex; /* Ativa o Flexbox para o conteúdo interno */
-        flex-direction: column; /* Organiza o conteúdo em coluna */
-    }
-
-    .plan-card.highlight { 
-        border-color: #007bff; 
-        border-width: 2px; 
-    }
-    .plan-card h2 { 
-        margin-top: 0; 
-    }
-    .plan-card .price { 
-        font-size: 2em; 
-        font-weight: bold; 
-        margin: 0.5em 0; 
-    }
-    .plan-card ul { 
-        list-style: none; 
-        padding: 0; 
-        margin: 1.5em 0; 
-        text-align: left; 
-    }
-    .plan-card ul li { 
-        margin-bottom: 0.75em; 
-    }
-    
-    .btn { 
-        text-decoration: none; 
-        background-color: #007bff; 
-        color: white; 
-        padding: 10px 15px; 
-        border-radius: 5px; 
-        border: none; 
-        cursor: pointer; 
-        display: block; 
-        width: 100%; 
-        box-sizing: border-box; 
-        margin-top: auto; /* Empurra o botão para o fundo do card */
-    }
-    .btn-secondary { 
-        background-color: #6c757d; 
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<h1 style="text-align: center;">Escolha o Plano Ideal para Você</h1>
+<div style="text-align: center;">
+    <hgroup>
+        <h1>Escolha o Plano Ideal para Você</h1>
+        <p>Acesso instantâneo a análises de futebol geradas por IA.</p>
+    </hgroup>
+</div>
 
-<div class="plans-container">
-    <div class="plan-card">
-        <h2>Gratuito</h2>
-        <div class="price">R$0<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
+<div class="grid">
+    <article class="plan-card">
+        <hgroup>
+            <h2>Gratuito</h2>
+            <p>Para começar a explorar.</p>
+        </hgroup>
+        <div class="price">R$0<small>/mês</small></div>
         <ul>
-            <li>✅ 3 Ligas Disponíveis</li>
-            <li>✅ 3 Análises Detalhadas Por Dia</li>
+            <li>3 Ligas Disponíveis</li>
+            <li>3 Análises Detalhadas Por Dia</li>
         </ul>
-        {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
-            <button class="btn btn-secondary" disabled>Seu Plano Atual</button>
-        {% elif not current_user.is_authenticated %}
-            <a href="{{ url_for('main.register') }}" class="btn btn-secondary">Comece Agora</a>
-        {% endif %}
-    </div>
+        <footer>
+            {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
+                <button class="contrast" disabled>Seu Plano Atual</button>
+            {% elif not current_user.is_authenticated %}
+                <a href="{{ url_for('main.register') }}" role="button" class="secondary">Comece Agora</a>
+            {% endif %}
+        </footer>
+    </article>
 
-    <div class="plan-card highlight">
-        <h2>Membro Mensal</h2>
-        <div class="price">R$29,90<span style="font-size: 0.5em; font-weight: normal;">/mês</span></div>
+    <article class="plan-card">
+        <hgroup>
+            <h2>Membro Mensal</h2>
+            <p>Acesso total, sem compromisso.</p>
+        </hgroup>
+        <div class="price">R$29,90<small>/mês</small></div>
         <ul>
-            <li>✅ <strong>Principais Ligas do Mundo</strong></li>
-            <li>✅ <strong>Análises Detalhadas Ilimitadas</strong></li>
+            <li><strong>Principais Ligas do Mundo</strong></li>
+            <li><strong>Análises Detalhadas Ilimitadas</strong></li>
         </ul>
-         {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
-            <button class="btn" disabled>Seu Plano Atual</button>
-        {% else %}
-            <a href="#" class="btn">Fazer Upgrade</a>
-        {% endif %}
-    </div>
+        <footer>
+            {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
+                <button disabled>Seu Plano Atual</button>
+            {% else %}
+                <a href="#" role="button">Fazer Upgrade</a>
+            {% endif %}
+        </footer>
+    </article>
     
-    <div class="plan-card highlight">
-        <h2>Membro Trimestral</h2>
-        <div class="price">R$79,90<span style="font-size: 0.5em; font-weight: normal;">/trimestre</span></div>
+    <article class="plan-card">
+        <hgroup>
+            <h2>Membro Trimestral</h2>
+            <p>O melhor custo-benefício.</p>
+        </hgroup>
+        <div class="price">R$79,90<small>/trimestre</small></div>
         <ul>
-            <li>✅ <strong>Principais Ligas do Mundo</strong></li>
-            <li>✅ <strong>Análises Detalhadas Ilimitadas</strong></li>
-            <li style="color: #28a745; font-weight: bold; margin-top: 1em; text-align: center;">🎉 Economize 11%!</li>
+            <li><strong>Principais Ligas do Mundo</strong></li>
+            <li><strong>Análises Detalhadas Ilimitadas</strong></li>
+            <li class="economia">Economize 11%!</li>
         </ul>
-         {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
-            <button class="btn" disabled>Seu Plano Atual</button>
-        {% else %}
-            <a href="#" class="btn">Fazer Upgrade</a>
-        {% endif %}
-    </div>
+        <footer>
+            {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
+                <button disabled>Seu Plano Atual</button>
+            {% else %}
+                <a href="#" role="button">Fazer Upgrade</a>
+            {% endif %}
+        </footer>
+    </article>
 </div>
 {% endblock %}

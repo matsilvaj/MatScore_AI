@@ -1,93 +1,114 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title }} - MatScore AI</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 1em; }
-        nav { text-align: right; padding: 10px; background-color: #f2f2f2; margin-bottom: 2em; border-radius: 8px;}
-        .match-header { text-align: center; margin-bottom: 2em; }
-        .analysis-card { border: 1px solid #ccc; border-radius: 8px; padding: 1.5em; }
-
-        /* --- ESTILOS DO POP-UP ATUALIZADOS --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background-color: white;
-            padding: 2em;
-            border-radius: 8px;
-            text-align: center;
-            width: 90%;
-            max-width: 500px;
-            position: relative;
-        }
-        .modal-content h2 { margin-top: 0; }
-        .modal-close {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #aaa;
-            cursor: pointer;
-        }
-        .modal-close:hover { color: #333; }
-        .btn { text-decoration: none; background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; display: inline-block; margin-top: 1em; }
-    </style>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
 </head>
 <body>
 
     {% if limit_reached %}
-        <div class="modal-overlay">
-            <div class="modal-content">
-                <span class="modal-close" id="close-modal">&times;</span>
-                <h2>Limite de Análises Atingido!</h2>
-                <p>Você já visualizou as suas 3 análises detalhadas gratuitas de hoje.</p>
-                <p>Faça o upgrade para o plano <strong>Membro</strong> e tenha acesso ilimitado a todas as análises, todos os dias!</p>
-                <a href="{{ url_for('main.plans') }}" class="btn">Ver Planos</a>
-            </div>
-        </div>
+        <main class="container">
+            <dialog open>
+                <article>
+                    <header>
+                        <a href="{{ url_for('main.futebol') }}" aria-label="Close" class="close"></a>
+                        <h2>Limite de Análises Atingido!</h2>
+                    </header>
+                    <p>Você já visualizou as suas 3 análises detalhadas gratuitas de hoje.</p>
+                    <p>Faça o upgrade para o plano <strong>Membro</strong> e tenha acesso ilimitado a todas as análises, todos os dias!</p>
+                    <footer>
+                        <a href="{{ url_for('main.plans') }}" role="button">Ver Planos</a>
+                    </footer>
+                </article>
+            </dialog>
+        </main>
     {% else %}
-        <nav>
-            {% if current_user.is_authenticated %}
-                <a href="{{ url_for('main.futebol') }}"><strong>Futebol</strong></a>
-                <a href="{{ url_for('main.logout') }}" style="margin-left: 15px;">Logout</a>
-            {% else %}
-                <a href="{{ url_for('main.index') }}">Página Inicial</a>
-                <a href="{{ url_for('main.login') }}" style="margin-left: 15px;">Login</a>
-                <a href="{{ url_for('main.register') }}" style="margin-left: 15px;">Registrar</a>
-            {% endif %}
+        <nav class="container main-nav">
+            <ul>
+                <li><a href="{{ url_for('main.index') }}" class="logo"><strong>MatScore AI</strong></a></li>
+            </ul>
+            <ul>
+                <li><a href="{{ url_for('main.futebol') }}">Futebol</a></li>
+                <li><a href="{{ url_for('main.account') }}">Minha Conta</a></li>
+                <li><a href="{{ url_for('main.logout') }}">Logout</a></li>
+            </ul>
         </nav>
 
-        <div class="match-header">
-            <h1>{{ analysis_content.mandante_nome }} vs {{ analysis_content.visitante_nome }}</h1>
-            <p><strong>Competição:</strong> {{ analysis_content.liga_nome }}</p>
-            <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis_content.recomendacao }}</p>
-        </div>
+        <main class="container">
+            <div class="match-header">
+                <div class="teams">
+                    <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                    <span>{{ analysis.mandante_nome }} vs {{ analysis.visitante_nome }}</span>
+                    <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                </div>
+                <p><strong>Competição:</strong> {{ analysis.liga_nome }}</p>
+                <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis.recomendacao }}</p>
+            </div>
 
-        <div class="analysis-card">
-            {{ analysis_content.detalhes[0]|safe }}
-        </div>
+            <article class="analysis-section text-content">
+                <h2>Análise Principal</h2>
+                <h3>Análise de Desempenho Recente</h3>
+                <b>{{ analysis.mandante_nome }}:</b>
+                <ul>
+                    <li><b>Forma:</b> {{ analysis.analise_detalhada.desempenho_mandante.forma }}</li>
+                    <li><b>Ponto Forte:</b> {{ analysis.analise_detalhada.desempenho_mandante.ponto_forte }}</li>
+                    <li><b>Ponto Fraco:</b> {{ analysis.analise_detalhada.desempenho_mandante.ponto_fraco }}</li>
+                </ul>
+                <b>{{ analysis.visitante_nome }}:</b>
+                <ul>
+                    <li><b>Forma:</b> {{ analysis.analise_detalhada.desempenho_visitante.forma }}</li>
+                    <li><b>Ponto Forte:</b> {{ analysis.analise_detalhada.desempenho_visitante.ponto_forte }}</li>
+                    <li><b>Ponto Fraco:</b> {{ analysis.analise_detalhada.desempenho_visitante.ponto_fraco }}</li>
+                </ul>
+                <h3>Análise do Confronto Direto</h3>
+                <p>{{ analysis.analise_detalhada.confronto_direto | replace('\\n', '<br>') | safe }}</p>
+                <h3>Informações Relevantes</h3>
+                <p>{{ analysis.analise_detalhada.informacoes_relevantes | replace('\\n', '<br>') | safe }}</p>
+                <h3>Mercados Favoráveis</h3>
+                <ul>
+                    {% for mercado in analysis.analise_detalhada.mercados_favoraveis %}
+                    <li><b>{{ mercado.mercado }}:</b> {{ mercado.justificativa }}</li>
+                    {% endfor %}
+                </ul>
+                <h3>Cenário Provável</h3>
+                <ul>
+                    <li><b>{{ analysis.analise_detalhada.cenario_provavel.mercado }}:</b> {{ analysis.analise_detalhada.cenario_provavel.justificativa }}</li>
+                </ul>
+            </article>
+
+            <article class="analysis-section secondary text-content">
+                <h2>Outras Análises</h2>
+                <h3>Análise de Escanteios</h3>
+                <p>{{ analysis.outras_analises.analise_escanteios | replace('\\n', '<br>') | safe }}</p>
+                <h3>Análise de Cartões</h3>
+                <p>{{ analysis.outras_analises.analise_cartoes | replace('\\n', '<br>') | safe }}</p>
+                <h3>Análise de Impedimentos</h3>
+                <p>{{ analysis.outras_analises.analise_impedimentos | replace('\\n', '<br>') | safe }}</p>
+            </article>
+
+            <article class="analysis-section data text-content">
+                <h2>Base de Dados Utilizada</h2>
+                <p>As informações abaixo serviram de fundamento para a análise.</p>
+                <h3>Últimos 5 jogos do {{ analysis.mandante_nome }}:</h3>
+                <pre>{{ analysis.dados_utilizados.ultimos_jogos_mandante | replace('\\n', '\n') }}</pre>
+                <h3>Últimos 5 jogos do {{ analysis.visitante_nome }}:</h3>
+                <pre>{{ analysis.dados_utilizados.ultimos_jogos_visitante | replace('\\n', '\n') }}</pre>
+                <h3>Últimos 5 Confrontos Diretos:</h3>
+                <pre>{{ analysis.dados_utilizados.ultimos_confrontos_diretos | replace('\\n', '\n') }}</pre>
+                <h3>Estatísticas (Últimos 5 jogos de {{ analysis.mandante_nome }}):</h3>
+                <pre>{{ analysis.dados_utilizados.stats_ultimos_jogos_mandante | replace('\\n', '\n') }}</pre>
+                <h3>Estatísticas (Últimos 5 jogos de {{ analysis.visitante_nome }}):</h3>
+                <pre>{{ analysis.dados_utilizados.stats_ultimos_jogos_visitante | replace('\\n', '\n') }}</pre>
+                <h3>Estatísticas (Últimos 5 Confrontos Diretos):</h3>
+                <pre>{{ analysis.dados_utilizados.stats_ultimos_confrontos_diretos | replace('\\n', '\n') }}</pre>
+            </article>
+        </main>
     {% endif %}
 
-    <script>
-        // Lógica para o pop-up de limite
-        const closeModalButton = document.getElementById('close-modal');
-        if (closeModalButton) {
-            closeModalButton.addEventListener('click', function() {
-                window.location.href = "{{ url_for('main.futebol') }}";
-            });
-        }
-    </script>
 </body>
 </html>

@@ -223,17 +223,16 @@ def analysis_detail(analysis_id):
             db.session.add(new_view)
             db.session.commit()
 
-    analysis = Analysis.query.get_or_404(analysis_id)
-    content = json.loads(analysis.content)
+    analysis_obj = Analysis.query.get_or_404(analysis_id)
+    analysis_data = json.loads(analysis_obj.content)
     
-    return render_template('analysis_detail.html', title='Análise Detalhada', analysis_content=content, limit_reached=limit_reached)
+    return render_template('analysis_detail.html', title='Análise Detalhada', analysis=analysis_data, limit_reached=limit_reached)
 
 @main.route("/account")
 @login_required
 def account():
     return render_template('account.html', title='Minha Conta')
 
-# ... (o resto das rotas de conta e contacto permanecem iguais) ...
 @main.route("/account/change_password", methods=['POST'])
 @login_required
 def change_password():
