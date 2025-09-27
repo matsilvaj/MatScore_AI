@@ -61,12 +61,13 @@ def gerar_analise_ia(partida):
 
     ⚠️ INSTRUÇÕES PARA A ANÁLISE PRINCIPAL (`analise_detalhada`):
     - Com base nos dados acima, faça uma análise focada no resultado da partida.
-    - Sugira 3 mercados conservadores e de baixa variância, como:
+    - O campo "cenario_provavel" deve conter a sua recomendação PRINCIPAL e MAIS SEGURA.
+    - Sugira 3 mercados conservadores e de baixa variância em "mercados_favoraveis", como:
       * Dupla Chance (1X, X2, 12)
       * Over/Under 1.5, 2.5, 3,5, 4.5 gols
-      * Handicap ..., +1.5, +2.5...
-    - Sugerir mercados de risco como "Mais de 2.5 gols", "Resultado", "Handicap -1.5, ...", Apenas se existir um padrão MUITO FORTE e justificado.
-    - O objetivo é **segurança** e **consistência**, não ousadia.
+      * Handicap +1.5 ou +2.5
+    - Sugerir mercados de risco como "Over/Under 2.5 gols", "Resultado", "Handicap -1.5, -2,5...", Apenas se existir um padrão MUITO FORTE e justificado.
+    - O objetivo é **tendência**, **segurança** e **consistência**, não ousadia. Apenas se estiver muito clara, forte e justificável a tendência.
 
     ---
     **PARTE 2: DADOS PARA OUTRAS ANÁLISES (ESTATÍSTICAS)**
@@ -89,7 +90,6 @@ def gerar_analise_ia(partida):
     Preencha TODOS os campos do JSON abaixo com as suas análises.
 
     {{
-      "mercado_principal": "Nome do mercado mais conservador, derivado da PARTE 1",
       "analise_detalhada": {{
         "desempenho_mandante": {{"forma": "...", "ponto_forte": "...", "ponto_fraco": "..."}},
         "desempenho_visitante": {{"forma": "...", "ponto_forte": "...", "ponto_fraco": "..."}},
@@ -98,7 +98,7 @@ def gerar_analise_ia(partida):
         "mercados_favoraveis": [
             {{"mercado": "...", "justificativa": "..."}}
         ],
-        "cenario_provavel": {{"mercado": "...", "justificativa": "..."}}
+        "cenario_provavel": {{"mercado": "Esta é a sua principal e mais segura recomendação.", "justificativa": "..."}}
       }},
       "outras_analises": {{
           "analise_escanteios": "Análise quantitativa de escanteios com sugestão de mercado Over/Under.",
@@ -126,7 +126,7 @@ def gerar_analise_ia(partida):
             ],
             model="gpt-4o",
             response_format={"type": "json_object"},
-            temperature=0.2
+            temperature=0.3
         )
         
         response_text = chat_completion.choices[0].message.content

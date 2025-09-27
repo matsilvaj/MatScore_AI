@@ -266,21 +266,28 @@ details[open] > summary {
     flex-grow: 1;
 }
 .team {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid; /* MODIFICADO: Trocado para grid para melhor controle */
+    grid-template-rows: 55px 1fr; /* ADICIONADO: Cria uma linha de 55px para a logo e uma segunda flexível para o nome */
+    align-items: center; /* ADICIONADO: Centraliza a logo verticalmente na sua linha */
+    justify-items: center; /* ADICIONADO: Centraliza a logo horizontalmente na sua linha */
     text-align: center;
     gap: 0.5em;
-    width: 80px;
+    width: 95px;
 }
 .team img {
-    width: 55px;
-    height: 55px;
+    /* MODIFICADO: Simplificado para preencher a célula do grid */
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
 }
 .team strong {
-    font-size: 0.9em;
+    font-size: 0.80em;
     line-height: 1.2;
     color: var(--contrast);
+    height: 2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .vs {
     font-size: 1em;
@@ -297,16 +304,16 @@ details[open] > summary {
 }
 .match-card-footer .scenario {
     text-align: left;
-    flex-shrink: 0;
+    flex-grow: 1;
 }
 .match-card-footer .scenario span {
-    font-size: 0.8em;
+    font-size: 0.70em;
     color: var(--muted-color);
     display: block;
 }
 .match-card-footer .scenario strong {
-    font-size: 0.95em;
-    white-space: nowrap;
+    font-size: 0.8em;
+    white-space: normal;
 }
 .match-card-footer a {
     padding: 0.5rem 1rem;

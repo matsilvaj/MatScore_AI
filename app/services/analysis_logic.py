@@ -7,6 +7,32 @@ from flask import current_app
 from datetime import datetime
 import pytz
 
+# --- LISTA DE LIGAS E COPAS SELECIONADAS ---
+# IDs confirmados da API-Football
+LIGAS_SELECIONADAS = {
+    # Ligas Nacionais
+    "Brasileirão Série A": {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"},
+    "Brasileirão Série B": {"id": 72, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"},
+    "Premier League": {"id": 39, "pais": "England", "flag": "https://media.api-sports.io/flags/gb.svg"},
+    "La Liga": {"id": 140, "pais": "Spain", "flag": "https://media.api-sports.io/flags/es.svg"},
+    "Serie A": {"id": 135, "pais": "Italy", "flag": "https://media.api-sports.io/flags/it.svg"},
+    "Bundesliga": {"id": 78, "pais": "Germany", "flag": "https://media.api-sports.io/flags/de.svg"},
+    "Ligue 1": {"id": 61, "pais": "France", "flag": "https://media.api-sports.io/flags/fr.svg"},
+    "Eredivisie": {"id": 88, "pais": "Netherlands", "flag": "https://media.api-sports.io/flags/nl.svg"},
+    "Primeira Liga": {"id": 94, "pais": "Portugal", "flag": "https://media.api-sports.io/flags/pt.svg"},
+    "Super Lig": {"id": 203, "pais": "Turkey", "flag": "https://media.api-sports.io/flags/tr.svg"},
+    "Jupiler Pro League": {"id": 144, "pais": "Belgium", "flag": "https://media.api-sports.io/flags/be.svg"},
+    
+    # Copas Nacionais
+    "FA Cup": {"id": 45, "pais": "England", "flag": "https://media.api-sports.io/flags/gb.svg"},
+    "Copa do Brasil": {"id": 90, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"},
+    
+    # Copas Internacionais
+    "Copa America": {"id": 9, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"},
+    "Euro Championship": {"id": 4, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"},
+    "World Cup": {"id": 1, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"}
+}
+
 def convert_utc_to_sao_paulo_time(utc_dt_str):
     """Converte uma string de data UTC para o horário de São Paulo (HH:MM)."""
     if not utc_dt_str:
@@ -20,16 +46,16 @@ def convert_utc_to_sao_paulo_time(utc_dt_str):
     except (ValueError, TypeError):
         return "N/A"
 
-def obter_ligas_disponiveis():
-    """Busca as ligas da API ou do cache."""
-    cached_ligas = cache.get("lista_de_ligas_futebol")
+def obter_ligas_definidas():
+    """Retorna a lista de ligas pré-definidas, buscando do cache se disponível."""
+    cached_ligas = cache.get("lista_ligas_definidas")
     if cached_ligas:
-        current_app.logger.info("Lista de ligas encontrada no cache.")
+        current_app.logger.info("Lista de ligas definida encontrada no cache.")
         return cached_ligas
     
-    ligas = football_api.carregar_ligas_da_api()
-    cache.set("lista_de_ligas_futebol", ligas, timeout=86400)
-    return ligas
+    current_app.logger.info("Lista de ligas definida não encontrada no cache. Usando lista fixa.")
+    cache.set("lista_ligas_definidas", LIGAS_SELECIONADAS, timeout=86400) # Cache por 24 horas
+    return LIGAS_SELECIONADAS
 
 def analisar_partida(partida, analysis_date):
     """Gera a análise de uma partida, com logging e tratamento de erros."""
@@ -53,6 +79,9 @@ def analisar_partida(partida, analysis_date):
     try:
         horario_jogo = convert_utc_to_sao_paulo_time(partida.get('data'))
         
+        cenario_provavel = dados_ia.get("analise_detalhada", {}).get("cenario_provavel", {})
+        recomendacao_principal = cenario_provavel.get("mercado", "Ver Análise Detalhada")
+
         resultado_final = {
             "horario": horario_jogo,
             "mandante_nome": partida['mandante_nome'],
@@ -60,7 +89,7 @@ def analisar_partida(partida, analysis_date):
             "mandante_escudo": partida['mandante_escudo'],
             "visitante_escudo": partida['visitante_escudo'],
             "liga_nome": partida['liga_nome'],
-            "recomendacao": dados_ia.get("mercado_principal", "Ver Análise Detalhada"),
+            "recomendacao": recomendacao_principal,
             "analise_detalhada": dados_ia.get("analise_detalhada", {}),
             "outras_analises": dados_ia.get("outras_analises", {}),
             "dados_utilizados": dados_ia.get("dados_utilizados", {})
@@ -81,12 +110,12 @@ def analisar_partida(partida, analysis_date):
 
 def gerar_analises(data_para_buscar, user_tier='free'):
     """Gera o stream de análises, com cache de partidas e logging."""
-    LIGAS_DISPONIVEIS = obter_ligas_disponiveis()
-    LIGAS_GRATUITAS = {
-        "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"}),
-        "La Liga": LIGAS_DISPONIVEIS.get("La Liga", {"id": 140, "pais": "Spain", "flag": "https://media.api-sports.io/flags/es.svg"})
-    }
-    LIGAS_MEMBROS = LIGAS_DISPONIVEIS
+    
+    todas_as_ligas = obter_ligas_definidas()
+    
+    LIGAS_GRATUITAS_NOMES = ["Brasileirão Série A", "Brasileirão Série B", "La Liga", "Serie A"]
+    LIGAS_GRATUITAS = {nome: todas_as_ligas[nome] for nome in LIGAS_GRATUITAS_NOMES if nome in todas_as_ligas}
+    LIGAS_MEMBROS = todas_as_ligas
 
     watchlist = LIGAS_GRATUITAS if user_tier == 'free' else LIGAS_MEMBROS
     jogos_encontrados_total = 0
@@ -108,7 +137,12 @@ def gerar_analises(data_para_buscar, user_tier='free'):
                 jogos_da_api = football_api.buscar_jogos_do_dia(id_liga, nome_liga, data_para_buscar)
                 
                 if jogos_da_api:
+                    jogos_filtrados_para_salvar = []
                     for jogo_api in jogos_da_api:
+                        # PONTO CHAVE 1: Ignora jogos se a API retornar um ID de liga diferente do esperado
+                        if jogo_api.get('liga_id') != id_liga:
+                            continue
+
                         existe = Match.query.filter_by(api_id=jogo_api['id']).first()
                         if not existe:
                             novo_jogo = Match(
@@ -120,15 +154,20 @@ def gerar_analises(data_para_buscar, user_tier='free'):
                                 away_team_id=jogo_api['visitante_id'],
                                 away_team_name=jogo_api['visitante_nome'],
                                 away_team_crest=jogo_api['visitante_escudo'],
-                                league_name=jogo_api['liga_nome']
+                                # PONTO CHAVE 2: Usa o nome da liga da nossa lista, e não da API
+                                league_name=nome_liga
                             )
                             db.session.add(novo_jogo)
-                    
+                        
+                        # Garante que o nome da liga é consistente para a análise
+                        jogo_api['liga_nome'] = nome_liga
+                        jogos_filtrados_para_salvar.append(jogo_api)
+
                     if db.session.new:
                         db.session.commit()
-                        current_app.logger.info(f"{len(jogos_da_api)} jogos de '{nome_liga}' salvos no cache do BD.")
+                        current_app.logger.info(f"{len(db.session.new)} jogos de '{nome_liga}' salvos no cache do BD.")
                     
-                    jogos_da_liga = jogos_da_api
+                    jogos_da_liga = jogos_filtrados_para_salvar
 
             if jogos_da_liga:
                 jogos_encontrados_total += len(jogos_da_liga)

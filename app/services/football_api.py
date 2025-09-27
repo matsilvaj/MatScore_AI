@@ -12,33 +12,6 @@ HEADERS = {
 }
 BASE_URL = "https://v3.football.api-sports.io/"
 
-def carregar_ligas_da_api():
-    """Busca as competições e países (com bandeira) disponíveis na API-Football."""
-    current_app.logger.info("Buscando lista de ligas da API-Football.")
-    url = f"{BASE_URL}leagues"
-    ligas = {}
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
-        response.raise_for_status()
-        dados = response.json().get('response', [])
-        for item in dados:
-            liga_info = item.get('league')
-            pais_info = item.get('country')
-            if liga_info and pais_info:
-                ligas[liga_info['name']] = {
-                    'id': liga_info['id'],
-                    'pais': pais_info.get('name'),
-                    'flag': pais_info.get('flag')
-                }
-        current_app.logger.info(f"{len(ligas)} ligas carregadas com sucesso da API-Football.")
-        return ligas
-    except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Não foi possível buscar as ligas da API-Football. Erro: {e}")
-        return {
-            "Premier League": {"id": 39, "pais": "England", "flag": "https://media.api-sports.io/flags/gb.svg"},
-            "Brasileirão Série A": {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"}
-        }
-
 def buscar_jogos_do_dia(id_liga, nome_liga, data):
     """Busca os jogos do dia na API-Football."""
     current_app.logger.info(f"Buscando jogos para '{nome_liga}' (ID: {id_liga}) na data: {data}...")
@@ -68,6 +41,7 @@ def buscar_jogos_do_dia(id_liga, nome_liga, data):
                 "visitante_id": away_team.get('id'),
                 "visitante_nome": away_team.get('name'),
                 "visitante_escudo": away_team.get('logo'),
+                "liga_id": league_info.get('id'),   # <-- ADICIONADO
                 "liga_nome": league_info.get('name')
             })
         current_app.logger.info(f"--> {len(lista_partidas)} jogos encontrados para '{nome_liga}'.")
@@ -97,7 +71,7 @@ def _buscar_e_formatar_jogos(url, params, log_message):
                          f"{goals.get('away', 'N/A')} {teams['away']['name']}")
             resultados_formatados.append(resultado)
             
-        texto_formatado = "\\n".join(resultados_formatados) if resultados_formatados else "Nenhum dado recente encontrado."
+        texto_formatado = "\n".join(resultados_formatados) if resultados_formatados else "Nenhum dado recente encontrado."
         return texto_formatado, jogos_ids
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Erro na API-Football: {log_message}. Detalhes: {e}")
@@ -165,4 +139,4 @@ def buscar_estatisticas_jogos(jogos_ids: list):
             current_app.logger.error(f"Erro ao buscar estatísticas para o jogo ID {jogo_id}: {e}")
             continue
 
-    return "\\n".join(all_stats) if all_stats else "Nenhuma estatística encontrada."
+    return "\n".join(all_stats) if all_stats else "Nenhuma estatística encontrada."
