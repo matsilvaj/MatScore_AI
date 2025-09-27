@@ -61,11 +61,11 @@ def gerar_analise_ia(partida):
 
     ⚠️ INSTRUÇÕES PARA A ANÁLISE PRINCIPAL (`analise_detalhada`):
     - Com base nos dados acima, faça uma análise focada no resultado da partida.
-    - Sugira APENAS mercados conservadores e de baixa variância, como:
+    - Sugira 3 mercados conservadores e de baixa variância, como:
       * Dupla Chance (1X, X2, 12)
-      * Under 3.5, 4.5... | Over 0.5, 1.5...
-      * Handicap +1.5, +2.5...
-    - Sugerir mercados de risco como "Mais de 2.5 gols", "Resultado", "Handicap -0,5, ...", Apenas se existir um padrão muito forte e justificado.
+      * Over/Under 1.5, 2.5, 3,5, 4.5 gols
+      * Handicap ..., +1.5, +2.5...
+    - Sugerir mercados de risco como "Mais de 2.5 gols", "Resultado", "Handicap -1.5, ...", Apenas se existir um padrão MUITO FORTE e justificado.
     - O objetivo é **segurança** e **consistência**, não ousadia.
 
     ---
@@ -76,7 +76,7 @@ def gerar_analise_ia(partida):
     - Estatísticas dos últimos 5 jogos de {partida['visitante_nome']}:
     {stats_visitante_txt}
     - Estatísticas dos últimos 5 confrontos diretos:
-    {stats_h2h_txt}
+    {stats_h2h_txt}.
     
     ⚠️ INSTRUÇÕES PARA AS OUTRAS ANÁLISES (`outras_analises`):
     - Com base nos dados de estatísticas, faça uma análise QUANTITATIVA.

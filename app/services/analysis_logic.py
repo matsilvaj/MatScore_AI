@@ -4,10 +4,24 @@ from app import cache, db
 from . import football_api, ai_analyzer
 from app.models import Analysis, Match
 from flask import current_app
+from datetime import datetime
+import pytz
 
-# --- GESTÃO DE CACHE MANUAL PARA AS LIGAS ---
+def convert_utc_to_sao_paulo_time(utc_dt_str):
+    """Converte uma string de data UTC para o horário de São Paulo (HH:MM)."""
+    if not utc_dt_str:
+        return "N/A"
+    try:
+        utc_dt = datetime.fromisoformat(utc_dt_str.replace('Z', '+00:00'))
+        utc_dt = utc_dt.replace(tzinfo=pytz.utc)
+        sao_paulo_tz = pytz.timezone("America/Sao_Paulo")
+        sao_paulo_dt = utc_dt.astimezone(sao_paulo_tz)
+        return sao_paulo_dt.strftime('%H:%M')
+    except (ValueError, TypeError):
+        return "N/A"
+
 def obter_ligas_disponiveis():
-    """Busca as ligas da API ou do cache. Deve ser chamada dentro de um contexto de app."""
+    """Busca as ligas da API ou do cache."""
     cached_ligas = cache.get("lista_de_ligas_futebol")
     if cached_ligas:
         current_app.logger.info("Lista de ligas encontrada no cache.")
@@ -19,9 +33,6 @@ def obter_ligas_disponiveis():
 
 def analisar_partida(partida, analysis_date):
     """Gera a análise de uma partida, com logging e tratamento de erros."""
-    from app import db
-    from app.models import Analysis
-
     partida_info = f"{partida['mandante_nome']} vs {partida['visitante_nome']}"
     current_app.logger.info(f"Analisando Jogo: {partida_info}")
     
@@ -40,9 +51,10 @@ def analisar_partida(partida, analysis_date):
         return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "mandante_escudo": partida['mandante_escudo'], "visitante_escudo": partida['visitante_escudo'], "recomendacao": "Erro na Análise", "error": True}
     
     try:
-        # ** REATORAÇÃO PRINCIPAL AQUI **
-        # Agora, simplesmente combinamos os dados da partida com a resposta da IA.
+        horario_jogo = convert_utc_to_sao_paulo_time(partida.get('data'))
+        
         resultado_final = {
+            "horario": horario_jogo,
             "mandante_nome": partida['mandante_nome'],
             "visitante_nome": partida['visitante_nome'],
             "mandante_escudo": partida['mandante_escudo'],
@@ -69,12 +81,10 @@ def analisar_partida(partida, analysis_date):
 
 def gerar_analises(data_para_buscar, user_tier='free'):
     """Gera o stream de análises, com cache de partidas e logging."""
-    from app import db 
-
     LIGAS_DISPONIVEIS = obter_ligas_disponiveis()
     LIGAS_GRATUITAS = {
-        "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", 71),
-        "La Liga": LIGAS_DISPONIVEIS.get("La Liga", 140)
+        "Brasileirão Série A": LIGAS_DISPONIVEIS.get("Brasileirão Série A", {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"}),
+        "La Liga": LIGAS_DISPONIVEIS.get("La Liga", {"id": 140, "pais": "Spain", "flag": "https://media.api-sports.io/flags/es.svg"})
     }
     LIGAS_MEMBROS = LIGAS_DISPONIVEIS
 
@@ -82,7 +92,10 @@ def gerar_analises(data_para_buscar, user_tier='free'):
     jogos_encontrados_total = 0
     
     try:
-        for nome_liga, id_liga in watchlist.items():
+        for nome_liga, liga_dados in watchlist.items():
+            id_liga = liga_dados['id']
+            pais_liga = liga_dados.get('pais', '')
+            flag_liga = liga_dados.get('flag', '')
             jogos_da_liga = []
             
             jogos_cacheados = Match.query.filter_by(match_date=data_para_buscar, league_name=nome_liga).all()
@@ -119,7 +132,7 @@ def gerar_analises(data_para_buscar, user_tier='free'):
 
             if jogos_da_liga:
                 jogos_encontrados_total += len(jogos_da_liga)
-                yield f"data: {json.dumps({'status': 'league_start', 'liga_nome': nome_liga})}\n\n"
+                yield f"data: {json.dumps({'status': 'league_start', 'liga_nome': nome_liga, 'pais_nome': pais_liga, 'pais_flag': flag_liga})}\n\n"
                 
                 for jogo in jogos_da_liga:
                     resultado_jogo = analisar_partida(jogo, data_para_buscar)

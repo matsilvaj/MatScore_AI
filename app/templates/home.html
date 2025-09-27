@@ -15,7 +15,7 @@
     </div>
 
     <div class="preview-section">
-        <h2>Últimas Análises de Futebol</h2>
+        <h2>Análises de Futebol para Hoje</h2>
         
         {% if analyses %}
             <div class="carousel-wrapper">
@@ -26,11 +26,11 @@
                         </div>
                     {% endfor %}
                 </div>
-                <button class="carousel-button prev" aria-label="Anterior">&lt;</button>
-                <button class="carousel-button next" aria-label="Próximo">&gt;</button>
+                <button class="carousel-button prev" aria-label="Anterior"><span>&lt;</span></button>
+                <button class="carousel-button next" aria-label="Próximo"><span>&gt;</span></button>
             </div>
         {% else %}
-            <p style="text-align: center;">Nenhuma análise recente encontrada.</p>
+            <p style="text-align: center;">Nenhuma análise encontrada para hoje.</p>
         {% endif %}
 
         <div class="centered-link">
@@ -39,7 +39,7 @@
     </div>
     
     <div class="preview-section disabled">
-        <h2>Análises de Basquete</h2>
+        <h2>Análises de Basquete para Hoje</h2>
         <h3 class="coming-soon">🚀 Em Breve!</h3>
         <p>Estamos a trabalhar para trazer o mesmo nível de análise para o mundo do basquete.</p>
     </div>

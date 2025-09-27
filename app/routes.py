@@ -55,12 +55,16 @@ def confirmed_required(f):
 @main.route("/")
 @main.route("/home")
 def index():
-    # Busca as 4 análises mais recentes do banco de dados
-    recent_analyses_db = Analysis.query.order_by(Analysis.generated_at.desc()).limit(4).all()
+    # --- LÓGICA ALTERADA ---
+    # Pega a data de hoje no formato YYYY-MM-DD
+    today_str = date.today().strftime('%Y-%m-%d')
+    
+    # Busca no banco de dados todas as análises para a data de hoje
+    todays_analyses_db = Analysis.query.filter_by(analysis_date=today_str).all()
     
     # Processa as análises para passar ao template
     analyses_list = []
-    for analysis_obj in recent_analyses_db:
+    for analysis_obj in todays_analyses_db:
         try:
             analysis_data = json.loads(analysis_obj.content)
             analysis_data['analysis_id'] = analysis_obj.id
@@ -240,7 +244,10 @@ def analysis_detail(analysis_id):
     analysis_obj = Analysis.query.get_or_404(analysis_id)
     analysis_data = json.loads(analysis_obj.content)
     
-    return render_template('analysis_detail.html', title='Análise Detalhada', analysis=analysis_data, limit_reached=limit_reached)
+    # Cria o título dinâmico para a aba do navegador
+    page_title = f"{analysis_data.get('mandante_nome', 'Análise')} vs {analysis_data.get('visitante_nome', 'Detalhada')}"
+    
+    return render_template('analysis_detail.html', title=page_title, analysis=analysis_data, limit_reached=limit_reached)
 
 @main.route("/account")
 @login_required

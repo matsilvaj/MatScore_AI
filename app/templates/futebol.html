@@ -17,11 +17,22 @@
             </article>
         {% endif %}
 
-        <label for="date-picker">
-            Selecione a data:
+        <div class="date-selector">
+            <button id="prev-day" aria-label="Dia anterior">&#9664;</button>
             <input type="date" id="date-picker">
-        </label>
+            <button id="next-day" aria-label="Próximo dia">&#9654;</button>
+        </div>
         
+        <div id="skeleton-loader" class="skeleton-loader-container">
+            <div id="skeleton-grid" class="skeleton-grid">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+            <p id="loader-text" class="skeleton-loader-text">Encontrando partidas...</p>
+        </div>
+
         <div id="resultados-container">
             </div>
     </div>

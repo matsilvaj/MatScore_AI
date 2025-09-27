@@ -61,7 +61,8 @@ def create_app():
     cache.init_app(app)
     mail.init_app(app)
     # --- INICIALIZA O LIMITER COM A APP ---
-    limiter.init_app(app)
+    if not app.debug:
+        limiter.init_app(app)
     # ------------------------------------
 
     from .routes import main as main_blueprint

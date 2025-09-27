@@ -13,7 +13,7 @@ HEADERS = {
 BASE_URL = "https://v3.football.api-sports.io/"
 
 def carregar_ligas_da_api():
-    """Busca as competições disponíveis na API-Football."""
+    """Busca as competições e países (com bandeira) disponíveis na API-Football."""
     current_app.logger.info("Buscando lista de ligas da API-Football.")
     url = f"{BASE_URL}leagues"
     ligas = {}
@@ -23,14 +23,25 @@ def carregar_ligas_da_api():
         dados = response.json().get('response', [])
         for item in dados:
             liga_info = item.get('league')
-            if liga_info:
-                ligas[liga_info['name']] = liga_info['id']
+            pais_info = item.get('country')
+            # Agora guardamos um dicionário com ID, país e a flag
+            if liga_info and pais_info:
+                ligas[liga_info['name']] = {
+                    'id': liga_info['id'],
+                    'pais': pais_info.get('name'),
+                    'flag': pais_info.get('flag')
+                }
         current_app.logger.info(f"{len(ligas)} ligas carregadas com sucesso da API-Football.")
         return ligas
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Não foi possível buscar as ligas da API-Football. Erro: {e}")
-        return {"Premier League": 39, "Brasileirão Série A": 71} # Fallback
+        # Fallback atualizado com a nova estrutura
+        return {
+            "Premier League": {"id": 39, "pais": "England", "flag": "https://media.api-sports.io/flags/gb.svg"},
+            "Brasileirão Série A": {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"}
+        }
 
+# O resto do arquivo permanece igual...
 def buscar_jogos_do_dia(id_liga, nome_liga, data):
     """Busca os jogos do dia na API-Football."""
     current_app.logger.info(f"Buscando jogos para '{nome_liga}' (ID: {id_liga}) na data: {data}...")
@@ -166,7 +177,6 @@ def buscar_estatisticas_jogos(jogos_ids: list):
                     elif stat_type == 'Offsides':
                         stats_jogo[team_side]['offsides'] = stat_value
             
-            # --- FORMATO SIMPLES RESTAURADO ---
             stats_line = (f"{stats_jogo['home']['team_name']} (Escanteios: {stats_jogo['home']['corners']}, Cartões: {stats_jogo['home']['cards']}, Impedimentos: {stats_jogo['home']['offsides']}) vs "
                           f"{stats_jogo['away']['team_name']} (Escanteios: {stats_jogo['away']['corners']}, Cartões: {stats_jogo['away']['cards']}, Impedimentos: {stats_jogo['away']['offsides']})")
             all_stats.append(stats_line)

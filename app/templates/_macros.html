@@ -1,6 +1,7 @@
 {# Este macro renderiza um card de jogo com base nos dados de uma análise #}
 {% macro render_match_card(analysis) %}
 <article class="match-card">
+    <div class="match-card-time">{{ analysis.horario }}</div>
     <div class="match-card-header">
         <div class="team">
             <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
