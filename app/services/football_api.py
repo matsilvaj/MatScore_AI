@@ -24,7 +24,6 @@ def carregar_ligas_da_api():
         for item in dados:
             liga_info = item.get('league')
             pais_info = item.get('country')
-            # Agora guardamos um dicionário com ID, país e a flag
             if liga_info and pais_info:
                 ligas[liga_info['name']] = {
                     'id': liga_info['id'],
@@ -35,13 +34,11 @@ def carregar_ligas_da_api():
         return ligas
     except requests.exceptions.RequestException as e:
         current_app.logger.error(f"Não foi possível buscar as ligas da API-Football. Erro: {e}")
-        # Fallback atualizado com a nova estrutura
         return {
             "Premier League": {"id": 39, "pais": "England", "flag": "https://media.api-sports.io/flags/gb.svg"},
             "Brasileirão Série A": {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"}
         }
 
-# O resto do arquivo permanece igual...
 def buscar_jogos_do_dia(id_liga, nome_liga, data):
     """Busca os jogos do dia na API-Football."""
     current_app.logger.info(f"Buscando jogos para '{nome_liga}' (ID: {id_liga}) na data: {data}...")
@@ -79,65 +76,48 @@ def buscar_jogos_do_dia(id_liga, nome_liga, data):
         current_app.logger.error(f"Erro ao buscar jogos do dia para {nome_liga}: {e}")
         return []
 
+def _buscar_e_formatar_jogos(url, params, log_message):
+    """Função auxiliar para buscar dados de jogos e formatar a saída."""
+    try:
+        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        response.raise_for_status()
+        jogos = response.json().get('response', [])
+        
+        resultados_formatados = []
+        jogos_ids = []
+        for jogo in jogos:
+            fixture = jogo.get('fixture', {})
+            teams = jogo.get('teams', {})
+            goals = jogo.get('goals', {})
+            data_jogo = datetime.fromisoformat(fixture.get('date')).strftime('%d.%m.%Y')
+            
+            jogos_ids.append(fixture.get('id'))
+            resultado = (f"{data_jogo} | "
+                         f"{teams['home']['name']} {goals.get('home', 'N/A')} vs "
+                         f"{goals.get('away', 'N/A')} {teams['away']['name']}")
+            resultados_formatados.append(resultado)
+            
+        texto_formatado = "\\n".join(resultados_formatados) if resultados_formatados else "Nenhum dado recente encontrado."
+        return texto_formatado, jogos_ids
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Erro na API-Football: {log_message}. Detalhes: {e}")
+        return "Erro ao buscar dados.", []
+
 def buscar_ultimos_jogos(time_id: int):
-    """Busca os últimos 5 jogos de um time e formata a saída, retornando também os IDs dos jogos."""
+    """Busca os últimos 5 jogos de um time."""
     current_app.logger.info(f"Buscando últimos 5 jogos para o time ID: {time_id}")
     url = f"{BASE_URL}fixtures"
     params = {'team': time_id, 'last': 5}
-    try:
-        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
-        response.raise_for_status()
-        jogos = response.json().get('response', [])
-        
-        resultados_formatados = []
-        jogos_ids = []
-        for jogo in jogos:
-            fixture = jogo.get('fixture', {})
-            teams = jogo.get('teams', {})
-            goals = jogo.get('goals', {})
-            data_jogo = datetime.fromisoformat(fixture.get('date')).strftime('%d.%m.%Y')
-            
-            jogos_ids.append(fixture.get('id'))
-            resultado = (f"{data_jogo} | "
-                         f"{teams['home']['name']} {goals.get('home', 'N/A')} vs "
-                         f"{goals.get('away', 'N/A')} {teams['away']['name']}")
-            resultados_formatados.append(resultado)
-            
-        texto_formatado = "\n".join(resultados_formatados) if resultados_formatados else "Nenhum dado recente encontrado."
-        return texto_formatado, jogos_ids
-    except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Erro ao buscar últimos jogos para o time ID {time_id}: {e}")
-        return "Erro ao buscar dados.", []
+    log_message = f"buscar últimos jogos para o time ID {time_id}"
+    return _buscar_e_formatar_jogos(url, params, log_message)
 
 def buscar_h2h(time1_id: int, time2_id: int):
-    """Busca os últimos 5 confrontos diretos, retornando também os IDs dos jogos."""
+    """Busca os últimos 5 confrontos diretos."""
     current_app.logger.info(f"Buscando H2H entre os times: {time1_id} vs {time2_id}")
     url = f"{BASE_URL}fixtures/headtohead"
     params = {'h2h': f"{time1_id}-{time2_id}", 'last': 5}
-    try:
-        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
-        response.raise_for_status()
-        jogos = response.json().get('response', [])
-        
-        resultados_formatados = []
-        jogos_ids = []
-        for jogo in jogos:
-            fixture = jogo.get('fixture', {})
-            teams = jogo.get('teams', {})
-            goals = jogo.get('goals', {})
-            data_jogo = datetime.fromisoformat(fixture.get('date')).strftime('%d.%m.%Y')
-            
-            jogos_ids.append(fixture.get('id'))
-            resultado = (f"{data_jogo} | "
-                         f"{teams['home']['name']} {goals.get('home', 'N/A')} vs "
-                         f"{goals.get('away', 'N/A')} {teams['away']['name']}")
-            resultados_formatados.append(resultado)
-            
-        texto_formatado = "\n".join(resultados_formatados) if resultados_formatados else "Nenhum confronto direto encontrado."
-        return texto_formatado, jogos_ids
-    except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Erro ao buscar H2H para os times {time1_id} e {time2_id}: {e}")
-        return "Erro ao buscar dados de H2H.", []
+    log_message = f"buscar H2H para os times {time1_id} e {time2_id}"
+    return _buscar_e_formatar_jogos(url, params, log_message)
 
 def buscar_estatisticas_jogos(jogos_ids: list):
     """Busca estatísticas para uma lista de IDs de jogos e retorna uma string simples formatada."""
@@ -185,4 +165,4 @@ def buscar_estatisticas_jogos(jogos_ids: list):
             current_app.logger.error(f"Erro ao buscar estatísticas para o jogo ID {jogo_id}: {e}")
             continue
 
-    return "\n".join(all_stats) if all_stats else "Nenhuma estatística encontrada."
+    return "\\n".join(all_stats) if all_stats else "Nenhuma estatística encontrada."
