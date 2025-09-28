@@ -82,32 +82,176 @@
                 </ul>
             </article>
 
-            <article class="analysis-section secondary text-content">
-                <h2>Outras Análises</h2>
-                <h3>Análise de Escanteios</h3>
-                <p>{{ analysis.outras_analises.analise_escanteios | replace('\\n', '<br>') | safe }}</p>
-                <h3>Análise de Cartões</h3>
-                <p>{{ analysis.outras_analises.analise_cartoes | replace('\\n', '<br>') | safe }}</p>
-                <h3>Análise de Impedimentos</h3>
-                <p>{{ analysis.outras_analises.analise_impedimentos | replace('\\n', '<br>') | safe }}</p>
+            <article class="analysis-section text-content">
+                <h2>Análise de Estatísticas</h2>
+                <h3>Últimos 5 Jogos Individuais</h3>
+                <div class="stats-table">
+                    <h4>Escanteios</h4>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                            <span>{{ analysis.mandante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                            {% for corner in analysis.estatisticas.individuais.mandante.escanteios.jogos %}
+                                <span class="stat-box">{{ corner }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.individuais.mandante.escanteios.media }}</strong>
+                        </div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                            <span>{{ analysis.visitante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                            {% for corner in analysis.estatisticas.individuais.visitante.escanteios.jogos %}
+                                <span class="stat-box">{{ corner }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.individuais.visitante.escanteios.media }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-table">
+                    <h4>Cartões</h4>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                            <span>{{ analysis.mandante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                             {% for card in analysis.estatisticas.individuais.mandante.cartoes.jogos %}
+                                <span class="stat-box">{{ card }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.individuais.mandante.cartoes.media }}</strong>
+                        </div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                            <span>{{ analysis.visitante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                            {% for card in analysis.estatisticas.individuais.visitante.cartoes.jogos %}
+                                <span class="stat-box">{{ card }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.individuais.visitante.cartoes.media }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <h3>Últimos 5 Confrontos Diretos</h3>
+                 <div class="stats-table">
+                    <h4>Escanteios</h4>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                            <span>{{ analysis.mandante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                            {% for corner in analysis.estatisticas.h2h.mandante.escanteios.jogos %}
+                                <span class="stat-box">{{ corner }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.h2h.mandante.escanteios.media }}</strong>
+                        </div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                            <span>{{ analysis.visitante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                             {% for corner in analysis.estatisticas.h2h.visitante.escanteios.jogos %}
+                                <span class="stat-box">{{ corner }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.h2h.visitante.escanteios.media }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-table">
+                    <h4>Cartões</h4>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                            <span>{{ analysis.mandante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                            {% for card in analysis.estatisticas.h2h.mandante.cartoes.jogos %}
+                                <span class="stat-box">{{ card }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.h2h.mandante.cartoes.media }}</strong>
+                        </div>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stats-team">
+                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                            <span>{{ analysis.visitante_nome }}</span>
+                        </div>
+                        <div class="stats-values">
+                             {% for card in analysis.estatisticas.h2h.visitante.cartoes.jogos %}
+                                <span class="stat-box">{{ card }}</span>
+                            {% else %}
+                                <span>N/D</span>
+                            {% endfor %}
+                        </div>
+                        <div class="stats-avg">
+                            Média: <strong>{{ analysis.estatisticas.h2h.visitante.cartoes.media }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            
+            <article class="analysis-section data text-content">
+                <h2>Histórico de Jogos</h2>
+                <h3>Últimos 5 Jogos: {{ analysis.mandante_nome }}</h3>
+                <div class="game-history">
+                    {% for jogo in analysis.dados_brutos.ultimos_jogos_mandante.split('\n') %}
+                        <p>{{ jogo }}</p>
+                    {% endfor %}
+                </div>
+
+                <h3>Últimos 5 Jogos: {{ analysis.visitante_nome }}</h3>
+                <div class="game-history">
+                    {% for jogo in analysis.dados_brutos.ultimos_jogos_visitante.split('\n') %}
+                        <p>{{ jogo }}</p>
+                    {% endfor %}
+                </div>
+
+                <h3>Últimos 5 Confrontos Diretos</h3>
+                <div class="game-history">
+                     {% for jogo in analysis.dados_brutos.confrontos_diretos.split('\n') %}
+                        <p>{{ jogo }}</p>
+                    {% endfor %}
+                </div>
             </article>
 
-            <article class="analysis-section data text-content">
-                <h2>Base de Dados Utilizada</h2>
-                <p>As informações abaixo serviram de fundamento para a análise.</p>
-                <h3>Últimos 5 jogos do {{ analysis.mandante_nome }}:</h3>
-                <pre>{{ analysis.dados_utilizados.ultimos_jogos_mandante | replace('\\n', '\n') }}</pre>
-                <h3>Últimos 5 jogos do {{ analysis.visitante_nome }}:</h3>
-                <pre>{{ analysis.dados_utilizados.ultimos_jogos_visitante | replace('\\n', '\n') }}</pre>
-                <h3>Últimos 5 Confrontos Diretos:</h3>
-                <pre>{{ analysis.dados_utilizados.ultimos_confrontos_diretos | replace('\\n', '\n') }}</pre>
-                <h3>Estatísticas (Últimos 5 jogos de {{ analysis.mandante_nome }}):</h3>
-                <pre>{{ analysis.dados_utilizados.stats_ultimos_jogos_mandante | replace('\\n', '\n') }}</pre>
-                <h3>Estatísticas (Últimos 5 jogos de {{ analysis.visitante_nome }}):</h3>
-                <pre>{{ analysis.dados_utilizados.stats_ultimos_jogos_visitante | replace('\\n', '\n') }}</pre>
-                <h3>Estatísticas (Últimos 5 Confrontos Diretos):</h3>
-                <pre>{{ analysis.dados_utilizados.stats_ultimos_confrontos_diretos | replace('\\n', '\n') }}</pre>
-            </article>
         </main>
     {% endif %}
 
