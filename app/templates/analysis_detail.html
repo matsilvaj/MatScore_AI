@@ -231,7 +231,7 @@
             <article class="analysis-section text-content">
                 <h2>Histórico de Jogos</h2>
                 
-                <h3>Últimos 5 Jogos: {{ analysis.mandante_nome }}</h3>
+                <h3>Últimos Jogos: {{ analysis.mandante_nome }}</h3>
                 <div class="game-history-table">
                     {% for jogo in analysis.dados_brutos.ultimos_jogos_mandante.jogos %}
                         <div class="game-history-row">
@@ -242,28 +242,20 @@
                                 <span>{{ jogo.visitante_nome }}</span><img src="{{ jogo.visitante_escudo }}" alt="">
                             </div>
                             <div class="game-stats">
-                                <span>Total Golos: <strong>{{ jogo.total_gols }}</strong></span>
-                                <span>Handicap: 
-                                    <strong>
-                                        {% if jogo.diferenca_gols == 0 %}
-                                            0
-                                        {% else %}
-                                            -{{ (jogo.diferenca_gols | abs) - 0.5 }} / +{{ (jogo.diferenca_gols | abs) + 0.5 }}
-                                        {% endif %}
-                                    </strong>
-                                </span>
+                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
                             </div>
                         </div>
                     {% else %}
                         <p>Nenhum jogo recente encontrado.</p>
                     {% endfor %}
                     <div class="game-history-summary">
-                        <span>Média Total Golos: <strong>{{ analysis.dados_brutos.ultimos_jogos_mandante.media_total_gols }}</strong></span>
-                        <span>Média Handicap: <strong>{% if analysis.dados_brutos.ultimos_jogos_mandante.media_diferenca_gols > 0 %}+{% endif %}{{ analysis.dados_brutos.ultimos_jogos_mandante.media_diferenca_gols }}</strong></span>
+                        <span>Média Total Gols: <strong>{{ analysis.dados_brutos.ultimos_jogos_mandante.media_total_gols }}</strong></span>
+                        <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.ultimos_jogos_mandante.media_handicap_abs) }}</strong></span>
                     </div>
                 </div>
 
-                <h3>Últimos 5 Jogos: {{ analysis.visitante_nome }}</h3>
+                <h3>Últimos Jogos: {{ analysis.visitante_nome }}</h3>
                 <div class="game-history-table">
                     {% for jogo in analysis.dados_brutos.ultimos_jogos_visitante.jogos %}
                          <div class="game-history-row">
@@ -274,28 +266,20 @@
                                 <span>{{ jogo.visitante_nome }}</span><img src="{{ jogo.visitante_escudo }}" alt="">
                             </div>
                             <div class="game-stats">
-                                <span>Total Golos: <strong>{{ jogo.total_gols }}</strong></span>
-                                <span>Handicap: 
-                                     <strong>
-                                        {% if jogo.diferenca_gols == 0 %}
-                                            0
-                                        {% else %}
-                                            -{{ (jogo.diferenca_gols | abs) - 0.5 }} / +{{ (jogo.diferenca_gols | abs) + 0.5 }}
-                                        {% endif %}
-                                    </strong>
-                                </span>
+                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
                             </div>
                         </div>
                      {% else %}
                         <p>Nenhum jogo recente encontrado.</p>
                     {% endfor %}
                     <div class="game-history-summary">
-                        <span>Média Total Golos: <strong>{{ analysis.dados_brutos.ultimos_jogos_visitante.media_total_gols }}</strong></span>
-                        <span>Média Handicap: <strong>{% if analysis.dados_brutos.ultimos_jogos_visitante.media_diferenca_gols > 0 %}+{% endif %}{{ analysis.dados_brutos.ultimos_jogos_visitante.media_diferenca_gols }}</strong></span>
+                        <span>Média Total Gols: <strong>{{ analysis.dados_brutos.ultimos_jogos_visitante.media_total_gols }}</strong></span>
+                        <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.ultimos_jogos_visitante.media_handicap_abs) }}</strong></span>
                     </div>
                 </div>
 
-                <h3>Últimos 5 Confrontos Diretos</h3>
+                <h3>Últimos Confrontos Diretos</h3>
                 <div class="game-history-table">
                      {% for jogo in analysis.dados_brutos.confrontos_diretos.jogos %}
                         <div class="game-history-row">
@@ -306,24 +290,16 @@
                                 <span>{{ jogo.visitante_nome }}</span><img src="{{ jogo.visitante_escudo }}" alt="">
                             </div>
                             <div class="game-stats">
-                                <span>Total Golos: <strong>{{ jogo.total_gols }}</strong></span>
-                                <span>Handicap: 
-                                     <strong>
-                                        {% if jogo.diferenca_gols == 0 %}
-                                            0
-                                        {% else %}
-                                            -{{ (jogo.diferenca_gols | abs) - 0.5 }} / +{{ (jogo.diferenca_gols | abs) + 0.5 }}
-                                        {% endif %}
-                                    </strong>
-                                </span>
+                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
                             </div>
                         </div>
                      {% else %}
                         <p>Nenhum confronto direto encontrado.</p>
                     {% endfor %}
                     <div class="game-history-summary">
-                        <span>Média Total Golos: <strong>{{ analysis.dados_brutos.confrontos_diretos.media_total_gols }}</strong></span>
-                        <span>Média Handicap: <strong>{% if analysis.dados_brutos.confrontos_diretos.media_diferenca_gols > 0 %}+{% endif %}{{ analysis.dados_brutos.confrontos_diretos.media_diferenca_gols }}</strong></span>
+                        <span>Média Total Gols: <strong>{{ analysis.dados_brutos.confrontos_diretos.media_total_gols }}</strong></span>
+                        <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.confrontos_diretos.media_handicap_abs) }}</strong></span>
                     </div>
                 </div>
             </article>
