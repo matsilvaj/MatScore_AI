@@ -234,17 +234,34 @@
                 <h3>Últimos Jogos: {{ analysis.mandante_nome }}</h3>
                 <div class="game-history-table">
                     {% for jogo in analysis.dados_brutos.ultimos_jogos_mandante.jogos %}
+                        {% set resultado_classe = '' %}
+                        {% set resultado_letra = '' %}
+                        {% if jogo.mandante_gols == jogo.visitante_gols %}
+                            {% set resultado_classe = 'result-draw' %}
+                            {% set resultado_letra = 'E' %}
+                        {% elif (jogo.mandante_nome == analysis.mandante_nome and jogo.mandante_gols > jogo.visitante_gols) or (jogo.visitante_nome == analysis.mandante_nome and jogo.visitante_gols > jogo.mandante_gols) %}
+                            {% set resultado_classe = 'result-win' %}
+                            {% set resultado_letra = 'V' %}
+                        {% else %}
+                            {% set resultado_classe = 'result-loss' %}
+                            {% set resultado_letra = 'D' %}
+                        {% endif %}
                         <div class="game-history-row">
                             <span class="game-date">{{ jogo.data }}</span>
-                            <div class="game-teams">
-                                <img src="{{ jogo.mandante_escudo }}" alt=""><span>{{ jogo.mandante_nome }}</span>
-                                <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
-                                <span>{{ jogo.visitante_nome }}</span><img src="{{ jogo.visitante_escudo }}" alt="">
+                            <div class="game-details">
+                                <div class="game-teams">
+                                    <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
+                                    <span class="{{ 'highlight-team' if jogo.mandante_nome == analysis.mandante_nome else '' }}">{{ jogo.mandante_nome }}</span>
+                                    <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
+                                    <span class="{{ 'highlight-team' if jogo.visitante_nome == analysis.mandante_nome else '' }}">{{ jogo.visitante_nome }}</span>
+                                    <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
+                                </div>
+                                <div class="game-stats">
+                                    <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                    <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
+                                </div>
                             </div>
-                            <div class="game-stats">
-                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
-                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
-                            </div>
+                            <span class="badge {{ resultado_classe }}">{{ resultado_letra }}</span>
                         </div>
                     {% else %}
                         <p>Nenhum jogo recente encontrado.</p>
@@ -258,17 +275,34 @@
                 <h3>Últimos Jogos: {{ analysis.visitante_nome }}</h3>
                 <div class="game-history-table">
                     {% for jogo in analysis.dados_brutos.ultimos_jogos_visitante.jogos %}
+                        {% set resultado_classe = '' %}
+                        {% set resultado_letra = '' %}
+                        {% if jogo.mandante_gols == jogo.visitante_gols %}
+                            {% set resultado_classe = 'result-draw' %}
+                            {% set resultado_letra = 'E' %}
+                        {% elif (jogo.mandante_nome == analysis.visitante_nome and jogo.mandante_gols > jogo.visitante_gols) or (jogo.visitante_nome == analysis.visitante_nome and jogo.visitante_gols > jogo.mandante_gols) %}
+                            {% set resultado_classe = 'result-win' %}
+                            {% set resultado_letra = 'V' %}
+                        {% else %}
+                            {% set resultado_classe = 'result-loss' %}
+                            {% set resultado_letra = 'D' %}
+                        {% endif %}
                          <div class="game-history-row">
                             <span class="game-date">{{ jogo.data }}</span>
-                            <div class="game-teams">
-                                <img src="{{ jogo.mandante_escudo }}" alt=""><span>{{ jogo.mandante_nome }}</span>
-                                <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
-                                <span>{{ jogo.visitante_nome }}</span><img src="{{ jogo.visitante_escudo }}" alt="">
+                            <div class="game-details">
+                                <div class="game-teams">
+                                    <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
+                                    <span class="{{ 'highlight-team' if jogo.mandante_nome == analysis.visitante_nome else '' }}">{{ jogo.mandante_nome }}</span>
+                                    <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
+                                    <span class="{{ 'highlight-team' if jogo.visitante_nome == analysis.visitante_nome else '' }}">{{ jogo.visitante_nome }}</span>
+                                    <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
+                                </div>
+                                <div class="game-stats">
+                                    <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                    <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
+                                </div>
                             </div>
-                            <div class="game-stats">
-                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
-                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
-                            </div>
+                            <span class="badge {{ resultado_classe }}">{{ resultado_letra }}</span>
                         </div>
                      {% else %}
                         <p>Nenhum jogo recente encontrado.</p>
@@ -284,14 +318,18 @@
                      {% for jogo in analysis.dados_brutos.confrontos_diretos.jogos %}
                         <div class="game-history-row">
                             <span class="game-date">{{ jogo.data }}</span>
-                            <div class="game-teams">
-                                <img src="{{ jogo.mandante_escudo }}" alt=""><span>{{ jogo.mandante_nome }}</span>
-                                <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
-                                <span>{{ jogo.visitante_nome }}</span><img src="{{ jogo.visitante_escudo }}" alt="">
-                            </div>
-                            <div class="game-stats">
-                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
-                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
+                            <div class="game-details">
+                                <div class="game-teams">
+                                    <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
+                                    <span>{{ jogo.mandante_nome }}</span>
+                                    <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
+                                    <span>{{ jogo.visitante_nome }}</span>
+                                    <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
+                                </div>
+                                <div class="game-stats">
+                                    <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                    <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
+                                </div>
                             </div>
                         </div>
                      {% else %}

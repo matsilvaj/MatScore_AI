@@ -558,7 +558,7 @@ details[open] > summary {
 }
 
 /* ==========================================================================
-   Histórico de Jogos
+   Histórico de Jogos (Layout Atualizado)
    ========================================================================== */
 .game-history-table {
     border: 1px solid var(--muted-border-color);
@@ -570,15 +570,13 @@ details[open] > summary {
 
 .game-history-row {
     display: flex;
-    flex-wrap: wrap; 
     align-items: center;
-    justify-content: space-between;
     gap: 1rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--card-border-color);
 }
 
-.game-history-table > div:last-of-type {
+.game-history-table > .game-history-row:last-of-type {
     border-bottom: none;
 }
 
@@ -586,30 +584,28 @@ details[open] > summary {
     font-family: monospace;
     font-size: 0.9em;
     color: var(--muted-color);
-    flex-basis: 100px;
     flex-shrink: 0;
+}
+
+.game-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-grow: 1;
+    gap: 0.25rem;
 }
 
 .game-teams {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 0.75rem;
-    flex-grow: 1;
-    min-width: 250px;
+    width: 100%;
 }
 
 .game-teams img {
     width: 24px;
     height: 24px;
-}
-
-.game-teams span {
-    text-align: right;
-}
-
-.game-teams span + img {
-    order: 1;
 }
 
 .game-score {
@@ -622,18 +618,53 @@ details[open] > summary {
     display: flex;
     gap: 1.5rem;
     font-size: 0.85em;
-    flex-basis: 250px;
-    justify-content: flex-end;
     color: var(--muted-color);
+    justify-content: center;
+    width: 100%;
 }
 
 .game-history-summary {
     padding: 0.75rem 0;
-    text-align: right;
+    text-align: center;
     font-weight: bold;
     color: var(--muted-color);
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 1.5rem;
-    font-size: 0.9em;
+    font-size: 0.8em;
+}
+
+.game-history-table .badge {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Destaque para o time analisado */
+.highlight-team {
+    font-weight: bold;
+    color: var(--contrast);
+}
+
+/* Estilos para os badges de resultado (V, E, D) */
+.badge {
+    color: #fff;
+    padding: 0.4em 0.6em;
+    font-size: 0.85em;
+    font-weight: 700;
+    border-radius: 0.25rem;
+    text-align: center;
+    display: inline-block;
+    min-width: 20px;
+}
+
+.result-win {
+    background-color: #28a745; /* Verde para Vitória */
+}
+
+.result-draw {
+    background-color: #6c757d; /* Cinza para Empate */
+}
+
+.result-loss {
+    background-color: #dc3545; /* Vermelho para Derrota */
 }
