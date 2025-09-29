@@ -6,9 +6,10 @@ from app.models import Analysis, Match
 from flask import current_app
 from datetime import datetime
 import pytz
+import math
 
 # --- LISTA DE LIGAS E COPAS SELECIONADAS ---
-# IDs confirmados da API-Football
+# (código da lista de ligas permanece o mesmo)
 LIGAS_SELECIONADAS = {
     # Ligas Nacionais
     "Brasileirão Série A": {"id": 71, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"},
@@ -33,6 +34,7 @@ LIGAS_SELECIONADAS = {
     "World Cup": {"id": 1, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"}
 }
 
+
 def convert_utc_to_sao_paulo_time(utc_dt_str):
     """Converte uma string de data UTC para o horário de São Paulo (HH:MM)."""
     if not utc_dt_str:
@@ -50,11 +52,8 @@ def obter_ligas_definidas():
     """Retorna a lista de ligas pré-definidas, buscando do cache se disponível."""
     cached_ligas = cache.get("lista_ligas_definidas")
     if cached_ligas:
-        current_app.logger.info("Lista de ligas definida encontrada no cache.")
         return cached_ligas
-    
-    current_app.logger.info("Lista de ligas definida não encontrada no cache. Usando lista fixa.")
-    cache.set("lista_ligas_definidas", LIGAS_SELECIONADAS, timeout=86400) # Cache por 24 horas
+    cache.set("lista_ligas_definidas", LIGAS_SELECIONADAS, timeout=86400)
     return LIGAS_SELECIONADAS
 
 def analisar_partida(partida, analysis_date):
@@ -71,10 +70,14 @@ def analisar_partida(partida, analysis_date):
 
     current_app.logger.info(f"--> Análise para '{partida_info}' não encontrada no cache. Gerando com a IA...")
     
-    ultimos_jogos_mandante, mandante_ids = football_api.buscar_ultimos_jogos(partida['mandante_id'])
-    ultimos_jogos_visitante, visitante_ids = football_api.buscar_ultimos_jogos(partida['visitante_id'])
-    confrontos_diretos, h2h_ids = football_api.buscar_h2h(partida['mandante_id'], partida['visitante_id'])
+    _, mandante_ids = football_api.buscar_ultimos_jogos(partida['mandante_id'])
+    _, visitante_ids = football_api.buscar_ultimos_jogos(partida['visitante_id'])
+    _, h2h_ids = football_api.buscar_h2h(partida['mandante_id'], partida['visitante_id'])
 
+    ultimos_jogos_mandante_list = football_api.buscar_ultimos_jogos_estruturados(partida['mandante_id'])
+    ultimos_jogos_visitante_list = football_api.buscar_ultimos_jogos_estruturados(partida['visitante_id'])
+    confrontos_diretos_list = football_api.buscar_h2h_estruturado(partida['mandante_id'], partida['visitante_id'])
+    
     stats_mandante = football_api.buscar_estatisticas_time_em_jogos(partida['mandante_id'], mandante_ids)
     stats_visitante = football_api.buscar_estatisticas_time_em_jogos(partida['visitante_id'], visitante_ids)
     stats_h2h_mandante = football_api.buscar_estatisticas_time_em_jogos(partida['mandante_id'], h2h_ids)
@@ -106,6 +109,26 @@ def analisar_partida(partida, analysis_date):
         }
     }
 
+    def processar_historico(lista_jogos):
+        if not lista_jogos:
+            return {"jogos": [], "media_total_gols": 0.0, "media_diferenca_gols": 0.0, "media_handicap_abs": 0.0}
+        
+        total_gols = [jogo['total_gols'] for jogo in lista_jogos]
+        diferenca_gols = [jogo['diferenca_gols'] for jogo in lista_jogos]
+        
+        return {
+            "jogos": lista_jogos,
+            "media_total_gols": calculate_avg(total_gols),
+            "media_diferenca_gols": calculate_avg(diferenca_gols),
+            "media_handicap_abs": calculate_avg([abs(g) for g in diferenca_gols])
+        }
+
+    dados_brutos = {
+        "ultimos_jogos_mandante": processar_historico(ultimos_jogos_mandante_list),
+        "ultimos_jogos_visitante": processar_historico(ultimos_jogos_visitante_list),
+        "confrontos_diretos": processar_historico(confrontos_diretos_list)
+    }
+
     dados_ia, erro = ai_analyzer.gerar_analise_ia(partida)
 
     if erro:
@@ -127,12 +150,7 @@ def analisar_partida(partida, analysis_date):
             "recomendacao": recomendacao_principal,
             "analise_detalhada": dados_ia.get("analise_detalhada", {}),
             "estatisticas": estatisticas,
-            # ADICIONADO: Passa os dados brutos dos jogos
-            "dados_brutos": {
-                "ultimos_jogos_mandante": ultimos_jogos_mandante,
-                "ultimos_jogos_visitante": ultimos_jogos_visitante,
-                "confrontos_diretos": confrontos_diretos
-            }
+            "dados_brutos": dados_brutos
         }
         
         nova_analise = Analysis(match_api_id=partida['id'], analysis_date=analysis_date, content=json.dumps(resultado_final))
@@ -142,6 +160,11 @@ def analisar_partida(partida, analysis_date):
         
         resultado_final['analysis_id'] = nova_analise.id
         return resultado_final
+
+    except Exception as e:
+        current_app.logger.error(f"Erro inesperado ao processar a resposta da IA para '{partida_info}': {e}")
+        return {"mandante_nome": partida['mandante_nome'], "visitante_nome": partida['visitante_nome'], "recomendacao": "Erro inesperado.", "error": True}
+
 
     except Exception as e:
         current_app.logger.error(f"Erro inesperado ao processar a resposta da IA para '{partida_info}': {e}")
@@ -179,7 +202,6 @@ def gerar_analises(data_para_buscar, user_tier='free'):
                 if jogos_da_api:
                     jogos_filtrados_para_salvar = []
                     for jogo_api in jogos_da_api:
-                        # PONTO CHAVE 1: Ignora jogos se a API retornar um ID de liga diferente do esperado
                         if jogo_api.get('liga_id') != id_liga:
                             continue
 
@@ -194,12 +216,10 @@ def gerar_analises(data_para_buscar, user_tier='free'):
                                 away_team_id=jogo_api['visitante_id'],
                                 away_team_name=jogo_api['visitante_nome'],
                                 away_team_crest=jogo_api['visitante_escudo'],
-                                # PONTO CHAVE 2: Usa o nome da liga da nossa lista, e não da API
                                 league_name=nome_liga
                             )
                             db.session.add(novo_jogo)
                         
-                        # Garante que o nome da liga é consistente para a análise
                         jogo_api['liga_nome'] = nome_liga
                         jogos_filtrados_para_salvar.append(jogo_api)
 

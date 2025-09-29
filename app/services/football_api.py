@@ -41,7 +41,7 @@ def buscar_jogos_do_dia(id_liga, nome_liga, data):
                 "visitante_id": away_team.get('id'),
                 "visitante_nome": away_team.get('name'),
                 "visitante_escudo": away_team.get('logo'),
-                "liga_id": league_info.get('id'),   # <-- ADICIONADO
+                "liga_id": league_info.get('id'),
                 "liga_nome": league_info.get('name')
             })
         current_app.logger.info(f"--> {len(lista_partidas)} jogos encontrados para '{nome_liga}'.")
@@ -93,6 +93,52 @@ def buscar_h2h(time1_id: int, time2_id: int):
     log_message = f"buscar H2H para os times {time1_id} e {time2_id}"
     return _buscar_e_formatar_jogos(url, params, log_message)
 
+def buscar_estatisticas_jogos(jogos_ids: list):
+    """Busca estatísticas para uma lista de IDs de jogos e retorna uma string simples formatada."""
+    if not jogos_ids:
+        return "Nenhuma partida para analisar."
+
+    all_stats = []
+    for jogo_id in jogos_ids:
+        try:
+            url = f"{BASE_URL}fixtures/statistics"
+            params = {'fixture': jogo_id}
+            response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json().get('response', [])
+            
+            if not data or len(data) < 2: continue
+            
+            home_team_data = data[0]
+            away_team_data = data[1]
+
+            stats_jogo = {
+                'home': {'team_name': home_team_data['team']['name'], 'corners': 0, 'cards': 0},
+                'away': {'team_name': away_team_data['team']['name'], 'corners': 0, 'cards': 0}
+            }
+            
+            for team_data in [home_team_data, away_team_data]:
+                team_side = 'home' if team_data['team']['id'] == home_team_data['team']['id'] else 'away'
+                for stat in team_data['statistics']:
+                    stat_type = stat.get('type')
+                    stat_value = stat.get('value')
+                    if stat_value is None: stat_value = 0
+                    
+                    if stat_type == 'Corner Kicks':
+                        stats_jogo[team_side]['corners'] = stat_value
+                    elif stat_type in ['Yellow Cards', 'Red Cards']:
+                        stats_jogo[team_side]['cards'] += int(stat_value)
+            
+            stats_line = (f"{stats_jogo['home']['team_name']} (Escanteios: {stats_jogo['home']['corners']}, Cartões: {stats_jogo['home']['cards']}) vs "
+                          f"{stats_jogo['away']['team_name']} (Escanteios: {stats_jogo['away']['corners']}, Cartões: {stats_jogo['away']['cards']})")
+            all_stats.append(stats_line)
+
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Erro ao buscar estatísticas para o jogo ID {jogo_id}: {e}")
+            continue
+
+    return "\n".join(all_stats) if all_stats else "Nenhuma estatística encontrada."
+
 def buscar_estatisticas_time_em_jogos(time_id: int, jogos_ids: list):
     """Busca estatísticas de um time específico para uma lista de IDs de jogos e retorna dados estruturados."""
     if not jogos_ids:
@@ -101,7 +147,6 @@ def buscar_estatisticas_time_em_jogos(time_id: int, jogos_ids: list):
     all_corners = []
     all_cards = []
     
-    # Processa na ordem fornecida (geralmente do mais recente para o mais antigo)
     for jogo_id in jogos_ids:
         try:
             url = f"{BASE_URL}fixtures/statistics"
@@ -141,3 +186,54 @@ def buscar_estatisticas_time_em_jogos(time_id: int, jogos_ids: list):
             continue
             
     return {'corners': all_corners, 'cards': all_cards}
+
+def _buscar_jogos_estruturados(url, params, log_message):
+    """Função auxiliar para buscar dados de jogos e formatar a saída como uma lista de dicionários."""
+    try:
+        response = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        response.raise_for_status()
+        jogos = response.json().get('response', [])
+        
+        lista_jogos_estruturados = []
+        for jogo in jogos:
+            fixture = jogo.get('fixture', {})
+            teams = jogo.get('teams', {})
+            goals = jogo.get('goals', {})
+            data_jogo = datetime.fromisoformat(fixture.get('date')).strftime('%d.%m.%Y')
+            
+            home_goals = goals.get('home', 0)
+            away_goals = goals.get('away', 0)
+            
+            if home_goals is None: home_goals = 0
+            if away_goals is None: away_goals = 0
+
+            lista_jogos_estruturados.append({
+                "data": data_jogo,
+                "mandante_nome": teams['home']['name'],
+                "mandante_escudo": teams['home']['logo'],
+                "mandante_gols": home_goals,
+                "visitante_nome": teams['away']['name'],
+                "visitante_escudo": teams['away']['logo'],
+                "visitante_gols": away_goals,
+                "total_gols": home_goals + away_goals,
+                "diferenca_gols": home_goals - away_goals
+            })
+            
+        return lista_jogos_estruturados
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Erro na API-Football: {log_message}. Detalhes: {e}")
+        return []
+
+def buscar_ultimos_jogos_estruturados(time_id: int):
+    """Busca os últimos 5 jogos de um time em formato estruturado."""
+    url = f"{BASE_URL}fixtures"
+    params = {'team': time_id, 'last': 5}
+    log_message = f"buscar últimos jogos estruturados para o time ID {time_id}"
+    return _buscar_jogos_estruturados(url, params, log_message)
+
+def buscar_h2h_estruturado(time1_id: int, time2_id: int):
+    """Busca os últimos 5 confrontos diretos em formato estruturado."""
+    url = f"{BASE_URL}fixtures/headtohead"
+    params = {'h2h': f"{time1_id}-{time2_id}", 'last': 5}
+    log_message = f"buscar H2H estruturado para os times {time1_id} e {time2_id}"
+    return _buscar_jogos_estruturados(url, params, log_message)
