@@ -1,1 +1,2 @@
-logs/* linguist-vendored
+*.log linguist-detectable=false
+*.log.1 linguist-detectable=false
