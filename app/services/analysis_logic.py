@@ -23,15 +23,34 @@ LIGAS_SELECIONADAS = {
     "Primeira Liga": {"id": 94, "pais": "Portugal", "flag": "https://media.api-sports.io/flags/pt.svg"},
     "Super Lig": {"id": 203, "pais": "Turkey", "flag": "https://media.api-sports.io/flags/tr.svg"},
     "Jupiler Pro League": {"id": 144, "pais": "Belgium", "flag": "https://media.api-sports.io/flags/be.svg"},
+    "Superligaen": {"id": 262, "pais": "Denmark", "flag": "https://media.api-sports.io/flags/dk.svg"},
     
     # Copas Nacionais
     "FA Cup": {"id": 45, "pais": "England", "flag": "https://media.api-sports.io/flags/gb.svg"},
     "Copa do Brasil": {"id": 90, "pais": "Brazil", "flag": "https://media.api-sports.io/flags/br.svg"},
+    "Copa del Rey": {"id": 143, "pais": "Spain", "flag": "https://media.api-sports.io/flags/es.svg"},
+    "Coppa Italia": {"id": 136, "pais": "Italy", "flag": "https://media.api-sports.io/flags/it.svg"},
+    "DFB Pokal": {"id": 79, "pais": "Germany", "flag": "https://media.api-sports.io/flags/de.svg"},
+    "Coupe de France": {"id": 62, "pais": "France", "flag": "https://media.api-sports.io/flags/fr.svg"},
+    "KNVB Beker": {"id": 89, "pais": "Netherlands", "flag": "https://media.api-sports.io/flags/nl.svg"},
+    "Taça de Portugal": {"id": 95, "pais": "Portugal", "flag": "https://media.api-sports.io/flags/pt.svg"},
+    "Turkish Cup": {"id": 204, "pais": "Turkey", "flag": "https://media.api-sports.io/flags/tr.svg"},
+    "Belgian Cup": {"id": 145, "pais": "Belgium", "flag": "https://media.api-sports.io/flags/be.svg"},
+    "Danish Cup": {"id": 263, "pais": "Denmark", "flag": "https://media.api-sports.io/flags/dk.svg"},
+
+    # Competições Internacionais de Clubes
+    "UEFA Champions League": {"id": 2, "pais": "Europe", "flag": "https://media.api-sports.io/flags/eu.svg"},
+    "UEFA Europa League": {"id": 3, "pais": "Europe", "flag": "https://media.api-sports.io/flags/eu.svg"},
+    "UEFA Europa Conference League": {"id": 11, "pais": "Europe", "flag": "https://media.api-sports.io/flags/eu.svg"},
+    "Copa Libertadores": {"id": 8, "pais": "South America", "flag": "https://media.api-sports.io/flags/un.svg"},
+    "Copa Sudamericana": {"id": 12, "pais": "South America", "flag": "https://media.api-sports.io/flags/un.svg"},
+    "FIFA Club World Cup": {"id": 15, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"},
     
     # Copas Internacionais
     "Copa America": {"id": 9, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"},
     "Euro Championship": {"id": 4, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"},
     "World Cup": {"id": 1, "pais": "World", "flag": "https://media.api-sports.io/flags/un.svg"}
+
 }
 
 
@@ -129,7 +148,29 @@ def analisar_partida(partida, analysis_date):
         "confrontos_diretos": processar_historico(confrontos_diretos_list)
     }
 
-    dados_ia, erro = ai_analyzer.gerar_analise_ia(partida)
+    import copy
+    dados_para_ia = {
+        "estatisticas": copy.deepcopy(estatisticas),
+        "historico_recente": copy.deepcopy(dados_brutos)
+    }
+
+    for categoria in dados_para_ia["historico_recente"]:
+        dados_para_ia["historico_recente"][categoria].pop("media_total_gols", None)
+        dados_para_ia["historico_recente"][categoria].pop("media_diferenca_gols", None)
+        dados_para_ia["historico_recente"][categoria].pop("media_handicap_abs", None)
+
+    # Removemos as chaves de média das 'estatisticas'
+    for tipo_stat in dados_para_ia["estatisticas"]:
+        for time in dados_para_ia["estatisticas"][tipo_stat]:
+            dados_para_ia["estatisticas"][tipo_stat][time]["escanteios"].pop("media", None)
+            dados_para_ia["estatisticas"][tipo_stat][time]["cartoes"].pop("media", None)
+
+    dados_completos_para_ia = {
+        "estatisticas": estatisticas,
+        "historico_recente": dados_brutos
+    }
+
+    dados_ia, erro = ai_analyzer.gerar_analise_ia(partida, dados_para_ia)
 
     if erro:
         current_app.logger.error(f"Erro retornado pelo gerador de IA para '{partida_info}': {erro}")
@@ -173,10 +214,10 @@ def analisar_partida(partida, analysis_date):
 
 def gerar_analises(data_para_buscar, user_tier='free'):
     """Gera o stream de análises, com cache de partidas e logging."""
-    
-    todas_as_ligas = obter_ligas_definidas()
-    
-    LIGAS_GRATUITAS_NOMES = ["Brasileirão Série A", "Brasileirão Série B", "La Liga", "Serie A"]
+
+    todas_as_ligas = LIGAS_SELECIONADAS
+
+    LIGAS_GRATUITAS_NOMES = ["Brasileirão Série A", "Brasileirão Série B", "La Liga", "Serie A", "UEFA Europa League", "Eredivisie"]
     LIGAS_GRATUITAS = {nome: todas_as_ligas[nome] for nome in LIGAS_GRATUITAS_NOMES if nome in todas_as_ligas}
     LIGAS_MEMBROS = todas_as_ligas
 
