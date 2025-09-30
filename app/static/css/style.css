@@ -414,37 +414,186 @@ details[open] > summary {
 /* ==========================================================================
    6. PÁGINA DE PLANOS
    ========================================================================== */
-.plan-card {
+
+.pricing-container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.pricing-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.pricing-header h1 {
+    margin-bottom: 0.5rem;
+}
+
+.pricing-header p {
+    font-size: 1.1rem;
+    color: var(--secondary);
+    max-width: 60ch;
+    margin: 0 auto;
+}
+
+.coupon-banner {
+    background-color: hsla(var(--primary-hsl), 0.1);
+    border: 1px solid hsla(var(--primary-hsl), 0.3);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.coupon-banner p {
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+}
+
+@media (min-width: 768px) {
+    .pricing-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.pricing-plan {
+    background-color: var(--card-background-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
     display: flex;
     flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
 }
-.plan-card hgroup {
-    text-align: center;
+
+.pricing-plan:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px hsla(var(--shadow-color-hsl), 0.15);
 }
-.plan-card .price {
-    font-size: 2.2em;
+
+.pricing-plan.popular {
+    border-color: var(--primary);
+    border-width: 2px;
+}
+
+.popular-badge {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--primary);
+    color: var(--primary-inverse);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
     font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.plan-header {
     text-align: center;
+    border-bottom: 1px solid var(--muted-border-color);
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.plan-header h2 {
+    margin-bottom: 0.25rem;
+    font-size: 1.5rem;
+}
+
+.plan-header p {
+    color: var(--secondary);
+    min-height: 40px;
+}
+
+.plan-price {
+    margin-top: 1rem;
+}
+
+.plan-price .price-amount {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.plan-price .price-period {
+    font-size: 1rem;
+    color: var(--muted-color);
+    margin-left: 0.25rem;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1; /* Faz a lista crescer e empurrar o footer para baixo */
+}
+
+.plan-features li {
+    margin-bottom: 1rem;
     display: flex;
-    justify-content: center;
-    align-items: baseline;
-    gap: 0.25em;
+    align-items: center;
 }
-.plan-card .price small {
-    font-size: 0.5em;
-    font-weight: normal;
+
+/* Adicionando um ícone de check genérico com CSS */
+.plan-features .icon-check {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 0.75rem;
+    background-color: hsla(var(--success-hsl), 0.2);
+    color: var(--success);
+    border-radius: 50%;
+    position: relative;
+    text-align: center;
+    line-height: 20px; /* Alinha o conteúdo verticalmente */
 }
-.plan-card ul {
-    list-style: '✅ ';
-    padding-left: 1.5em;
+
+.plan-features .icon-check::before {
+    content: '✔'; /* Símbolo de check */
+    font-size: 12px;
+    font-weight: bold;
 }
-.plan-card .economia {
+
+/* NOVO: Estilos para o ícone de X */
+.plan-features .icon-cross {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 0.75rem;
+    background-color: hsla(var(--danger-hsl), 0.1);
+    color: var(--danger);
+    border-radius: 50%;
+    position: relative;
+    text-align: center;
+    line-height: 20px;
+}
+
+.plan-features .icon-cross::before {
+    content: '✖'; /* Símbolo de X */
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* NOVO: Estilo para o texto do recurso desabilitado */
+.plan-features .feature-disabled {
+    color: var(--muted-color);
+    text-decoration: line-through;
+}
+
+
+.plan-features .economia {
     color: var(--success);
     font-weight: bold;
-    list-style: '🎉 ';
-}
-.plan-card footer {
-    margin-top: auto;
 }
 
 

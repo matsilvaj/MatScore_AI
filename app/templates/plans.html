@@ -1,70 +1,90 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div style="text-align: center;">
-    <hgroup>
+<div class="pricing-container">
+    <header class="pricing-header">
         <h1>Escolha o Plano Ideal para Você</h1>
-        <p>Acesso instantâneo a análises de futebol geradas por IA.</p>
-    </hgroup>
-</div>
+        <p>Acesso instantâneo a análises de futebol geradas por IA. Cancele quando quiser.</p>
+    </header>
 
-<div class="grid">
-    <article class="plan-card">
-        <hgroup>
-            <h2>Gratuito</h2>
-            <p>Para começar a explorar.</p>
-        </hgroup>
-        <div class="price">R$0<small>/mês</small></div>
-        <ul>
-            <li>3 Ligas Disponíveis</li>
-            <li>3 Análises Detalhadas Por Dia</li>
-        </ul>
-        <footer>
-            {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
-                <button class="contrast" disabled>Seu Plano Atual</button>
-            {% elif not current_user.is_authenticated %}
-                <a href="{{ url_for('main.register') }}" role="button" class="secondary">Comece Agora</a>
-            {% endif %}
-        </footer>
-    </article>
+    <div class="coupon-banner">
+        <p>🎉 <strong>OFERTA ESPECIAL:</strong> Use o cupom <strong>BEMVINDO40</strong> e ganhe 40% de desconto no seu primeiro ciclo!</p>
+    </div>
 
-    <article class="plan-card">
-        <hgroup>
-            <h2>Membro Mensal</h2>
-            <p>Acesso total, sem compromisso.</p>
-        </hgroup>
-        <div class="price">R$29,90<small>/mês</small></div>
-        <ul>
-            <li><strong>Principais Ligas do Mundo</strong></li>
-            <li><strong>Análises Detalhadas Ilimitadas</strong></li>
-        </ul>
-        <footer>
-            {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
-                <button disabled>Seu Plano Atual</button>
-            {% else %}
-                <a href="#" role="button">Fazer Upgrade</a>
-            {% endif %}
-        </footer>
-    </article>
-    
-    <article class="plan-card">
-        <hgroup>
-            <h2>Membro Trimestral</h2>
-            <p>O melhor custo-benefício.</p>
-        </hgroup>
-        <div class="price">R$79,90<small>/trimestre</small></div>
-        <ul>
-            <li><strong>Principais Ligas do Mundo</strong></li>
-            <li><strong>Análises Detalhadas Ilimitadas</strong></li>
-            <li class="economia">Economize 11%!</li>
-        </ul>
-        <footer>
-            {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
-                <button disabled>Seu Plano Atual</button>
-            {% else %}
-                <a href="#" role="button">Fazer Upgrade</a>
-            {% endif %}
-        </footer>
-    </article>
+    <div class="pricing-grid">
+        <article class="pricing-plan">
+            <header class="plan-header">
+                <h2>Gratuito</h2>
+                <p>Para começar a explorar.</p>
+                <div class="plan-price">
+                    <span class="price-amount">R$0</span>
+                    <span class="price-period">/mês</span>
+                </div>
+            </header>
+            <ul class="plan-features">
+                <li><i class="icon-check"></i> 6 Ligas Disponíveis</li>
+                <li><i class="icon-check"></i> 3 Análises Detalhadas por Dia</li>
+                <li class="feature-disabled"><i class="icon-cross"></i> Principais Ligas do Mundo</li>
+                <li class="feature-disabled"><i class="icon-cross"></i> Sem Anúncios</li>
+            </ul>
+            <footer class="plan-footer">
+                {% if current_user.is_authenticated and current_user.subscription_tier == 'free' %}
+                    <button class="contrast" disabled>Seu Plano Atual</button>
+                {% elif not current_user.is_authenticated %}
+                    <a href="{{ url_for('main.register') }}" role="button" class="secondary">Comece Agora</a>
+                {% endif %}
+            </footer>
+        </article>
+
+        <article class="pricing-plan">
+            <header class="plan-header">
+                <h2>Membro Mensal</h2>
+                <p>Acesso total e sem limitações.</p>
+                <div class="plan-price">
+                    <span class="price-amount">R$41,90</span>
+                    <span class="price-period">/mês</span>
+                </div>
+            </header>
+            <ul class="plan-features">
+                <li><i class="icon-check"></i> <strong>Principais Ligas do Mundo</strong></li>
+                <li><i class="icon-check"></i> <strong>Análises Detalhadas Ilimitadas</strong></li>
+                <li><i class="icon-check"></i> Acesso a todos os Esportes</li>
+                <li><i class="icon-check"></i> Sem Anúncios</li>
+            </ul>
+            <footer class="plan-footer">
+                 {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
+                    <button disabled>Seu Plano Atual</button>
+                {% else %}
+                    <a href="#" role="button">Assinar Agora</a>
+                {% endif %}
+            </footer>
+        </article>
+        
+        <article class="pricing-plan popular">
+            <div class="popular-badge">MAIS POPULAR</div>
+            <header class="plan-header">
+                <h2>Membro Trimestral</h2>
+                <p>O melhor custo-benefício.</p>
+                <div class="plan-price">
+                    <span class="price-amount">R$111,90</span>
+                    <span class="price-period">/trimestre</span>
+                </div>
+            </header>
+            <ul class="plan-features">
+                <li><i class="icon-check"></i> <strong>Principais Ligas do Mundo</strong></li>
+                <li><i class="icon-check"></i> <strong>Análises Detalhadas Ilimitadas</strong></li>
+                <li><i class="icon-check"></i> Acesso a todos os Esportes</li>
+                <li><i class="icon-check"></i> Sem Anúncios</li>
+                <li class="economia"><i class="icon-check"></i> Economize 11%</li>
+            </ul>
+            <footer class="plan-footer">
+                 {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
+                    <button disabled>Seu Plano Atual</button>
+                {% else %}
+                    <a href="#" role="button">Assinar Agora</a>
+                {% endif %}
+            </footer>
+        </article>
+    </div>
 </div>
 {% endblock %}

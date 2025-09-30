@@ -1,349 +1,328 @@
-<!DOCTYPE html>
-<html lang="pt-br" data-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ title }} - MatScore AI</title>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
-</head>
-<body>
+{% extends "layout.html" %}
 
-    {% if limit_reached %}
-        <main class="container">
-            <dialog open>
-                <article>
-                    <header>
-                        <a href="{{ url_for('main.futebol') }}" aria-label="Close" class="close"></a>
-                        <h2>Limite de Análises Atingido!</h2>
-                    </header>
-                    <p>Você já visualizou as suas 3 análises detalhadas gratuitas de hoje.</p>
-                    <p>Faça o upgrade para o plano <strong>Membro</strong> e tenha acesso ilimitado a todas as análises, todos os dias!</p>
-                    <footer>
-                        <a href="{{ url_for('main.plans') }}" role="button">Ver Planos</a>
-                    </footer>
-                </article>
-            </dialog>
-        </main>
-    {% else %}
-        <nav class="container main-nav">
-            <ul>
-                <li><a href="{{ url_for('main.index') }}" class="logo"><strong>MatScore AI</strong></a></li>
-            </ul>
-            <ul>
-                <li><a href="{{ url_for('main.futebol') }}">Futebol</a></li>
-                <li><a href="{{ url_for('main.account') }}">Minha Conta</a></li>
-                <li><a href="{{ url_for('main.logout') }}">Logout</a></li>
-            </ul>
-        </nav>
+{% block content %}
 
-        <main class="container">
-            <div class="match-header">
-                <div class="teams">
-                    <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
-                    <span>{{ analysis.mandante_nome }} vs {{ analysis.visitante_nome }}</span>
-                    <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+{% if limit_reached %}
+    <main class="container">
+        <dialog open>
+            <article>
+                <header>
+                    <a href="{{ url_for('main.futebol') }}" aria-label="Close" class="close"></a>
+                    <h2>Limite de Análises Atingido!</h2>
+                </header>
+                <p>Você já visualizou as suas 3 análises detalhadas gratuitas de hoje.</p>
+                <p>Faça o upgrade para o plano <strong>Membro</strong> e tenha acesso ilimitado a todas as análises, todos os dias!</p>
+                <footer>
+                    <a href="{{ url_for('main.plans') }}" role="button">Ver Planos</a>
+                </footer>
+            </article>
+        </dialog>
+    </main>
+{% else %}
+    <main class="container">
+        <div class="match-header">
+            <div class="teams">
+                <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                <span>{{ analysis.mandante_nome }} vs {{ analysis.visitante_nome }}</span>
+                <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+            </div>
+            <p><strong>Competição:</strong> {{ analysis.liga_nome }}</p>
+            <p><strong>Horário:</strong> {{ analysis.horario }}</p>
+            <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis.analise_detalhada.cenario_provavel.mercado }}</p>
+        </div>
+
+        <article class="analysis-section text-content">
+            <h2>Análise Principal</h2>
+            <h3>Análise de Desempenho Recente</h3>
+            <b>{{ analysis.mandante_nome }}:</b>
+            <ul>
+                <li><b>Forma:</b> {{ analysis.analise_detalhada.desempenho_mandante.forma }}</li>
+                <li><b>Ponto Forte:</b> {{ analysis.analise_detalhada.desempenho_mandante.ponto_forte }}</li>
+                <li><b>Ponto Fraco:</b> {{ analysis.analise_detalhada.desempenho_mandante.ponto_fraco }}</li>
+            </ul>
+            <b>{{ analysis.visitante_nome }}:</b>
+            <ul>
+                <li><b>Forma:</b> {{ analysis.analise_detalhada.desempenho_visitante.forma }}</li>
+                <li><b>Ponto Forte:</b> {{ analysis.analise_detalhada.desempenho_visitante.ponto_forte }}</li>
+                <li><b>Ponto Fraco:</b> {{ analysis.analise_detalhada.desempenho_visitante.ponto_fraco }}</li>
+            </ul>
+            <h3>Análise do Confronto Direto</h3>
+            <p>{{ analysis.analise_detalhada.confronto_direto | replace('\\n', '<br>') | safe }}</p>
+            <h3>Informações Relevantes</h3>
+            <p>{{ analysis.analise_detalhada.informacoes_relevantes | replace('\\n', '<br>') | safe }}</p>
+            <h3>Mercados Favoráveis</h3>
+            <ul>
+                {% for mercado in analysis.analise_detalhada.mercados_favoraveis %}
+                <li><b>{{ mercado.mercado }}:</b> {{ mercado.justificativa }}</li>
+                {% endfor %}
+            </ul>
+            <h3>Cenário Provável</h3>
+            <ul>
+                <li><b>{{ analysis.analise_detalhada.cenario_provavel.mercado }}:</b> {{ analysis.analise_detalhada.cenario_provavel.justificativa }}</li>
+            </ul>
+        </article>
+
+        <article class="analysis-section text-content">
+            <h2>Análise de Estatísticas</h2>
+            <h3>Últimos 5 Jogos Individuais</h3>
+            <div class="stats-table">
+                <h4>Escanteios</h4>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                        <span>{{ analysis.mandante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                        {% for corner in analysis.estatisticas.individuais.mandante.escanteios.jogos %}
+                            <span class="stat-box">{{ corner }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.individuais.mandante.escanteios.media }}</strong>
+                    </div>
                 </div>
-                <p><strong>Competição:</strong> {{ analysis.liga_nome }}</p>
-                <p><strong>Horário:</strong> {{ analysis.horario }}</p>
-                <p><strong>Cenário de Maior Probabilidade:</strong> {{ analysis.analise_detalhada.cenario_provavel.mercado }}</p>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                        <span>{{ analysis.visitante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                        {% for corner in analysis.estatisticas.individuais.visitante.escanteios.jogos %}
+                            <span class="stat-box">{{ corner }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.individuais.visitante.escanteios.media }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-table">
+                <h4>Cartões</h4>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                        <span>{{ analysis.mandante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                         {% for card in analysis.estatisticas.individuais.mandante.cartoes.jogos %}
+                            <span class="stat-box">{{ card }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.individuais.mandante.cartoes.media }}</strong>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                        <span>{{ analysis.visitante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                        {% for card in analysis.estatisticas.individuais.visitante.cartoes.jogos %}
+                            <span class="stat-box">{{ card }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.individuais.visitante.cartoes.media }}</strong>
+                    </div>
+                </div>
+            </div>
+            <h3>Últimos 5 Confrontos Diretos</h3>
+             <div class="stats-table">
+                <h4>Escanteios</h4>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                        <span>{{ analysis.mandante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                        {% for corner in analysis.estatisticas.h2h.mandante.escanteios.jogos %}
+                            <span class="stat-box">{{ corner }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.h2h.mandante.escanteios.media }}</strong>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                        <span>{{ analysis.visitante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                         {% for corner in analysis.estatisticas.h2h.visitante.escanteios.jogos %}
+                            <span class="stat-box">{{ corner }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.h2h.visitante.escanteios.media }}</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-table">
+                <h4>Cartões</h4>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
+                        <span>{{ analysis.mandante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                        {% for card in analysis.estatisticas.h2h.mandante.cartoes.jogos %}
+                            <span class="stat-box">{{ card }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.h2h.mandante.cartoes.media }}</strong>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <div class="stats-team">
+                        <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
+                        <span>{{ analysis.visitante_nome }}</span>
+                    </div>
+                    <div class="stats-values">
+                         {% for card in analysis.estatisticas.h2h.visitante.cartoes.jogos %}
+                            <span class="stat-box">{{ card }}</span>
+                        {% else %}
+                            <span>N/D</span>
+                        {% endfor %}
+                    </div>
+                    <div class="stats-avg">
+                        Média: <strong>{{ analysis.estatisticas.h2h.visitante.cartoes.media }}</strong>
+                    </div>
+                </div>
+            </div>
+        </article>
+        
+        <article class="analysis-section text-content">
+            <h2>Histórico de Jogos</h2>
+            
+            <h3>Últimos Jogos: {{ analysis.mandante_nome }}</h3>
+            <div class="game-history-table">
+                {% for jogo in analysis.dados_brutos.ultimos_jogos_mandante.jogos %}
+                    {% set resultado_classe = '' %}
+                    {% set resultado_letra = '' %}
+                    {% if jogo.mandante_gols == jogo.visitante_gols %}
+                        {% set resultado_classe = 'result-draw' %}
+                        {% set resultado_letra = 'E' %}
+                    {% elif (jogo.mandante_nome == analysis.mandante_nome and jogo.mandante_gols > jogo.visitante_gols) or (jogo.visitante_nome == analysis.mandante_nome and jogo.visitante_gols > jogo.mandante_gols) %}
+                        {% set resultado_classe = 'result-win' %}
+                        {% set resultado_letra = 'V' %}
+                    {% else %}
+                        {% set resultado_classe = 'result-loss' %}
+                        {% set resultado_letra = 'D' %}
+                    {% endif %}
+                    <div class="game-history-row">
+                        <span class="game-date">{{ jogo.data }}</span>
+                        <div class="game-details">
+                            <div class="game-teams">
+                                <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
+                                <span class="{{ 'highlight-team' if jogo.mandante_nome == analysis.mandante_nome else '' }}">{{ jogo.mandante_nome }}</span>
+                                <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
+                                <span class="{{ 'highlight-team' if jogo.visitante_nome == analysis.mandante_nome else '' }}">{{ jogo.visitante_nome }}</span>
+                                <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
+                            </div>
+                            <div class="game-stats">
+                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
+                            </div>
+                        </div>
+                        <span class="badge {{ resultado_classe }}">{{ resultado_letra }}</span>
+                    </div>
+                {% else %}
+                    <p>Nenhum jogo recente encontrado.</p>
+                {% endfor %}
+                <div class="game-history-summary">
+                    <span>Média Total Gols: <strong>{{ analysis.dados_brutos.ultimos_jogos_mandante.media_total_gols }}</strong></span>
+                    <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.ultimos_jogos_mandante.media_handicap_abs) }}</strong></span>
+                </div>
             </div>
 
-            <article class="analysis-section text-content">
-                <h2>Análise Principal</h2>
-                <h3>Análise de Desempenho Recente</h3>
-                <b>{{ analysis.mandante_nome }}:</b>
-                <ul>
-                    <li><b>Forma:</b> {{ analysis.analise_detalhada.desempenho_mandante.forma }}</li>
-                    <li><b>Ponto Forte:</b> {{ analysis.analise_detalhada.desempenho_mandante.ponto_forte }}</li>
-                    <li><b>Ponto Fraco:</b> {{ analysis.analise_detalhada.desempenho_mandante.ponto_fraco }}</li>
-                </ul>
-                <b>{{ analysis.visitante_nome }}:</b>
-                <ul>
-                    <li><b>Forma:</b> {{ analysis.analise_detalhada.desempenho_visitante.forma }}</li>
-                    <li><b>Ponto Forte:</b> {{ analysis.analise_detalhada.desempenho_visitante.ponto_forte }}</li>
-                    <li><b>Ponto Fraco:</b> {{ analysis.analise_detalhada.desempenho_visitante.ponto_fraco }}</li>
-                </ul>
-                <h3>Análise do Confronto Direto</h3>
-                <p>{{ analysis.analise_detalhada.confronto_direto | replace('\\n', '<br>') | safe }}</p>
-                <h3>Informações Relevantes</h3>
-                <p>{{ analysis.analise_detalhada.informacoes_relevantes | replace('\\n', '<br>') | safe }}</p>
-                <h3>Mercados Favoráveis</h3>
-                <ul>
-                    {% for mercado in analysis.analise_detalhada.mercados_favoraveis %}
-                    <li><b>{{ mercado.mercado }}:</b> {{ mercado.justificativa }}</li>
-                    {% endfor %}
-                </ul>
-                <h3>Cenário Provável</h3>
-                <ul>
-                    <li><b>{{ analysis.analise_detalhada.cenario_provavel.mercado }}:</b> {{ analysis.analise_detalhada.cenario_provavel.justificativa }}</li>
-                </ul>
-            </article>
-
-            <article class="analysis-section text-content">
-                <h2>Análise de Estatísticas</h2>
-                <h3>Últimos 5 Jogos Individuais</h3>
-                <div class="stats-table">
-                    <h4>Escanteios</h4>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
-                            <span>{{ analysis.mandante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                            {% for corner in analysis.estatisticas.individuais.mandante.escanteios.jogos %}
-                                <span class="stat-box">{{ corner }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.individuais.mandante.escanteios.media }}</strong>
-                        </div>
-                    </div>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
-                            <span>{{ analysis.visitante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                            {% for corner in analysis.estatisticas.individuais.visitante.escanteios.jogos %}
-                                <span class="stat-box">{{ corner }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.individuais.visitante.escanteios.media }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="stats-table">
-                    <h4>Cartões</h4>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
-                            <span>{{ analysis.mandante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                             {% for card in analysis.estatisticas.individuais.mandante.cartoes.jogos %}
-                                <span class="stat-box">{{ card }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.individuais.mandante.cartoes.media }}</strong>
-                        </div>
-                    </div>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
-                            <span>{{ analysis.visitante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                            {% for card in analysis.estatisticas.individuais.visitante.cartoes.jogos %}
-                                <span class="stat-box">{{ card }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.individuais.visitante.cartoes.media }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <h3>Últimos 5 Confrontos Diretos</h3>
-                 <div class="stats-table">
-                    <h4>Escanteios</h4>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
-                            <span>{{ analysis.mandante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                            {% for corner in analysis.estatisticas.h2h.mandante.escanteios.jogos %}
-                                <span class="stat-box">{{ corner }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.h2h.mandante.escanteios.media }}</strong>
-                        </div>
-                    </div>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
-                            <span>{{ analysis.visitante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                             {% for corner in analysis.estatisticas.h2h.visitante.escanteios.jogos %}
-                                <span class="stat-box">{{ corner }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.h2h.visitante.escanteios.media }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="stats-table">
-                    <h4>Cartões</h4>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.mandante_escudo }}" alt="Escudo do {{ analysis.mandante_nome }}">
-                            <span>{{ analysis.mandante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                            {% for card in analysis.estatisticas.h2h.mandante.cartoes.jogos %}
-                                <span class="stat-box">{{ card }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.h2h.mandante.cartoes.media }}</strong>
-                        </div>
-                    </div>
-                    <div class="stats-row">
-                        <div class="stats-team">
-                            <img src="{{ analysis.visitante_escudo }}" alt="Escudo do {{ analysis.visitante_nome }}">
-                            <span>{{ analysis.visitante_nome }}</span>
-                        </div>
-                        <div class="stats-values">
-                             {% for card in analysis.estatisticas.h2h.visitante.cartoes.jogos %}
-                                <span class="stat-box">{{ card }}</span>
-                            {% else %}
-                                <span>N/D</span>
-                            {% endfor %}
-                        </div>
-                        <div class="stats-avg">
-                            Média: <strong>{{ analysis.estatisticas.h2h.visitante.cartoes.media }}</strong>
-                        </div>
-                    </div>
-                </div>
-            </article>
-            
-            <article class="analysis-section text-content">
-                <h2>Histórico de Jogos</h2>
-                
-                <h3>Últimos Jogos: {{ analysis.mandante_nome }}</h3>
-                <div class="game-history-table">
-                    {% for jogo in analysis.dados_brutos.ultimos_jogos_mandante.jogos %}
-                        {% set resultado_classe = '' %}
-                        {% set resultado_letra = '' %}
-                        {% if jogo.mandante_gols == jogo.visitante_gols %}
-                            {% set resultado_classe = 'result-draw' %}
-                            {% set resultado_letra = 'E' %}
-                        {% elif (jogo.mandante_nome == analysis.mandante_nome and jogo.mandante_gols > jogo.visitante_gols) or (jogo.visitante_nome == analysis.mandante_nome and jogo.visitante_gols > jogo.mandante_gols) %}
-                            {% set resultado_classe = 'result-win' %}
-                            {% set resultado_letra = 'V' %}
-                        {% else %}
-                            {% set resultado_classe = 'result-loss' %}
-                            {% set resultado_letra = 'D' %}
-                        {% endif %}
-                        <div class="game-history-row">
-                            <span class="game-date">{{ jogo.data }}</span>
-                            <div class="game-details">
-                                <div class="game-teams">
-                                    <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
-                                    <span class="{{ 'highlight-team' if jogo.mandante_nome == analysis.mandante_nome else '' }}">{{ jogo.mandante_nome }}</span>
-                                    <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
-                                    <span class="{{ 'highlight-team' if jogo.visitante_nome == analysis.mandante_nome else '' }}">{{ jogo.visitante_nome }}</span>
-                                    <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
-                                </div>
-                                <div class="game-stats">
-                                    <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
-                                    <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
-                                </div>
-                            </div>
-                            <span class="badge {{ resultado_classe }}">{{ resultado_letra }}</span>
-                        </div>
+            <h3>Últimos Jogos: {{ analysis.visitante_nome }}</h3>
+            <div class="game-history-table">
+                {% for jogo in analysis.dados_brutos.ultimos_jogos_visitante.jogos %}
+                    {% set resultado_classe = '' %}
+                    {% set resultado_letra = '' %}
+                    {% if jogo.mandante_gols == jogo.visitante_gols %}
+                        {% set resultado_classe = 'result-draw' %}
+                        {% set resultado_letra = 'E' %}
+                    {% elif (jogo.mandante_nome == analysis.visitante_nome and jogo.mandante_gols > jogo.visitante_gols) or (jogo.visitante_nome == analysis.visitante_nome and jogo.visitante_gols > jogo.mandante_gols) %}
+                        {% set resultado_classe = 'result-win' %}
+                        {% set resultado_letra = 'V' %}
                     {% else %}
-                        <p>Nenhum jogo recente encontrado.</p>
-                    {% endfor %}
-                    <div class="game-history-summary">
-                        <span>Média Total Gols: <strong>{{ analysis.dados_brutos.ultimos_jogos_mandante.media_total_gols }}</strong></span>
-                        <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.ultimos_jogos_mandante.media_handicap_abs) }}</strong></span>
-                    </div>
-                </div>
-
-                <h3>Últimos Jogos: {{ analysis.visitante_nome }}</h3>
-                <div class="game-history-table">
-                    {% for jogo in analysis.dados_brutos.ultimos_jogos_visitante.jogos %}
-                        {% set resultado_classe = '' %}
-                        {% set resultado_letra = '' %}
-                        {% if jogo.mandante_gols == jogo.visitante_gols %}
-                            {% set resultado_classe = 'result-draw' %}
-                            {% set resultado_letra = 'E' %}
-                        {% elif (jogo.mandante_nome == analysis.visitante_nome and jogo.mandante_gols > jogo.visitante_gols) or (jogo.visitante_nome == analysis.visitante_nome and jogo.visitante_gols > jogo.mandante_gols) %}
-                            {% set resultado_classe = 'result-win' %}
-                            {% set resultado_letra = 'V' %}
-                        {% else %}
-                            {% set resultado_classe = 'result-loss' %}
-                            {% set resultado_letra = 'D' %}
-                        {% endif %}
-                         <div class="game-history-row">
-                            <span class="game-date">{{ jogo.data }}</span>
-                            <div class="game-details">
-                                <div class="game-teams">
-                                    <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
-                                    <span class="{{ 'highlight-team' if jogo.mandante_nome == analysis.visitante_nome else '' }}">{{ jogo.mandante_nome }}</span>
-                                    <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
-                                    <span class="{{ 'highlight-team' if jogo.visitante_nome == analysis.visitante_nome else '' }}">{{ jogo.visitante_nome }}</span>
-                                    <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
-                                </div>
-                                <div class="game-stats">
-                                    <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
-                                    <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
-                                </div>
+                        {% set resultado_classe = 'result-loss' %}
+                        {% set resultado_letra = 'D' %}
+                    {% endif %}
+                     <div class="game-history-row">
+                        <span class="game-date">{{ jogo.data }}</span>
+                        <div class="game-details">
+                            <div class="game-teams">
+                                <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
+                                <span class="{{ 'highlight-team' if jogo.mandante_nome == analysis.visitante_nome else '' }}">{{ jogo.mandante_nome }}</span>
+                                <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
+                                <span class="{{ 'highlight-team' if jogo.visitante_nome == analysis.visitante_nome else '' }}">{{ jogo.visitante_nome }}</span>
+                                <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
                             </div>
-                            <span class="badge {{ resultado_classe }}">{{ resultado_letra }}</span>
-                        </div>
-                     {% else %}
-                        <p>Nenhum jogo recente encontrado.</p>
-                    {% endfor %}
-                    <div class="game-history-summary">
-                        <span>Média Total Gols: <strong>{{ analysis.dados_brutos.ultimos_jogos_visitante.media_total_gols }}</strong></span>
-                        <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.ultimos_jogos_visitante.media_handicap_abs) }}</strong></span>
-                    </div>
-                </div>
-
-                <h3>Últimos Confrontos Diretos</h3>
-                <div class="game-history-table">
-                     {% for jogo in analysis.dados_brutos.confrontos_diretos.jogos %}
-                        <div class="game-history-row">
-                            <span class="game-date">{{ jogo.data }}</span>
-                            <div class="game-details">
-                                <div class="game-teams">
-                                    <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
-                                    <span>{{ jogo.mandante_nome }}</span>
-                                    <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
-                                    <span>{{ jogo.visitante_nome }}</span>
-                                    <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
-                                </div>
-                                <div class="game-stats">
-                                    <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
-                                    <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
-                                </div>
+                            <div class="game-stats">
+                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
                             </div>
                         </div>
-                     {% else %}
-                        <p>Nenhum confronto direto encontrado.</p>
-                    {% endfor %}
-                    <div class="game-history-summary">
-                        <span>Média Total Gols: <strong>{{ analysis.dados_brutos.confrontos_diretos.media_total_gols }}</strong></span>
-                        <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.confrontos_diretos.media_handicap_abs) }}</strong></span>
+                        <span class="badge {{ resultado_classe }}">{{ resultado_letra }}</span>
                     </div>
+                 {% else %}
+                    <p>Nenhum jogo recente encontrado.</p>
+                {% endfor %}
+                <div class="game-history-summary">
+                    <span>Média Total Gols: <strong>{{ analysis.dados_brutos.ultimos_jogos_visitante.media_total_gols }}</strong></span>
+                    <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.ultimos_jogos_visitante.media_handicap_abs) }}</strong></span>
                 </div>
-            </article>
+            </div>
 
-        </main>
-    {% endif %}
+            <h3>Últimos Confrontos Diretos</h3>
+            <div class="game-history-table">
+                 {% for jogo in analysis.dados_brutos.confrontos_diretos.jogos %}
+                    <div class="game-history-row">
+                        <span class="game-date">{{ jogo.data }}</span>
+                        <div class="game-details">
+                            <div class="game-teams">
+                                <img src="{{ jogo.mandante_escudo }}" alt="Escudo do {{ jogo.mandante_nome }}">
+                                <span>{{ jogo.mandante_nome }}</span>
+                                <strong class="game-score">{{ jogo.mandante_gols }} x {{ jogo.visitante_gols }}</strong>
+                                <span>{{ jogo.visitante_nome }}</span>
+                                <img src="{{ jogo.visitante_escudo }}" alt="Escudo do {{ jogo.visitante_nome }}">
+                            </div>
+                            <div class="game-stats">
+                                <span>Total Gols: <strong>{{ jogo.total_gols }}</strong></span>
+                                <span>Handicap: <strong>{{ jogo.diferenca_gols | abs }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                 {% else %}
+                    <p>Nenhum confronto direto encontrado.</p>
+                {% endfor %}
+                <div class="game-history-summary">
+                    <span>Média Total Gols: <strong>{{ analysis.dados_brutos.confrontos_diretos.media_total_gols }}</strong></span>
+                    <span>Média Handicap: <strong>{{ '%.2f'|format(analysis.dados_brutos.confrontos_diretos.media_handicap_abs) }}</strong></span>
+                </div>
+            </div>
+        </article>
 
-</body>
-</html>
+    </main>
+{% endif %}
+
+{% endblock %}

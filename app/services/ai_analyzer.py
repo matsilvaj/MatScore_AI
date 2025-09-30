@@ -44,9 +44,9 @@ def gerar_analise_ia(partida, dados_para_analise): # <-- ALTERAÇÃO AQUI
     **PASSO 2: Análise do Vencedor (Resultado/Dupla Chance/Handicap)**
     1.  **O Confronto Direto (H2H) tem o maior peso para este mercado.**
     2.  Se o H2H mostra uma tendência clara de vitórias ou empates para uma equipe (ex: 4 de 5 resultados favoráveis), sugira "Dupla Chance" para essa equipe.
-    3.  Se o H2H mostra um domínio absoluto de uma equipe (ex: venceu os últimos 4 ou 5 jogos), sugira "Vitória" para essa equipe.
-    4.  Se o H2H é equilibrado com vencedores diferentes, analise a "diferenca_gols" de cada jogo (handicap). Se houver um padrão consistente de vitórias por uma margem pequena, sugira um mercado de "Handicap Positivo" (ex: +1.5 ou 2.5) para a equipe que costuma perder por pouco ou para o time da casa.
-    5.  **REGRA CRÍTICA:** Se não houver confronto direto evite sugerir mercados de vencedor. É necessário ter dados de H2H para tomar uma decisão para este mercado.
+    3.  Se o H2H mostra um domínio absoluto de uma equipe nos confrontos diretos (ex: venceu os últimos 4 ou 5 jogos), sugira "Vitória" para essa equipe.
+    4.  Se o H2H é equilibrado com vencedores diferentes, analise a "diferenca_gols" de cada jogo (handicap). Se houver um padrão consistente de vitórias por uma margem, sugira um mercado de "Handicap Positivo" (ex: +1.5 ou 2.5) para a equipe que costuma perder por pouco ou para o time da casa.
+    5.  **REGRA CRÍTICA:** Se não houver confronto direto evite sugerir mercados de vencedor. É necessário ter dados de confronto direto para tomar uma decisão para este mercado.
 
     **PASSO 3: Análise de Escanteios e Cartões**
     1. **Análise o total de escanteios e o total de cartões para cada partida individualmente dos ultimos jogos de ambas as equipas e nos confrontos diretos.**
@@ -59,6 +59,8 @@ def gerar_analise_ia(partida, dados_para_analise): # <-- ALTERAÇÃO AQUI
     **PASSO 4: Seleção do Cenário Mais Provável e Mercado Principal**
     1.  Depois de analisar todos os mercados nos passos anteriores, Selecione UM mercado que você considera o mais seguro e com maior probabilidade de acontecer. Este será o seu "mercado_principal".
     3.  **REGRA CRÍTICA DE CONSISTÊNCIA:** O valor que você definir em "cenário_provavel" DEVE SER EXATAMENTE O MESMO mercado que você descrever em "cenário_provavel". Devem estar perfeitamente alinhados.
+
+    **REGRA CRÍTICA: Sempre sugira o mercado com uma margem de segurança, por exemplo se over 2.5 está forte fale sobre isso mas sua sugestão é over 1.5 para ter uma margem de seguraça.**
 
     DADOS ESTATÍSTICOS PARA ANÁLISE:
     ```json
