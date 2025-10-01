@@ -1,3 +1,6 @@
+{# app/templates/_macros.html #}
+
+{# --- MACRO PARA RENDERIZAR CARDS DE JOGOS --- #}
 {# Este macro renderiza um card de jogo com base nos dados de uma análise #}
 {% macro render_match_card(analysis) %}
 <article class="match-card">
@@ -21,4 +24,24 @@
         <a href="{{ url_for('main.analysis_detail', analysis_id=analysis.analysis_id) }}" role="button" class="outline">Ver Análise</a>
     </footer>
 </article>
+{% endmacro %}
+
+
+{# --- MACRO PARA RENDERIZAR CAMPOS DE FORMULÁRIO (NOVA) --- #}
+{# Este macro renderiza um campo de formulário do Flask-WTF com rótulo, input e erros de validação #}
+{% macro render_field(field) %}
+  <div class="form-group mb-3">
+    {{ field.label(class="form-label") }}
+    
+    {% if field.errors %}
+      {{ field(class="form-control is-invalid", **kwargs) }}
+      <div class="invalid-feedback">
+        {% for error in field.errors %}
+          <span>{{ error }}</span>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ field(class="form-control", **kwargs) }}
+    {% endif %}
+  </div>
 {% endmacro %}

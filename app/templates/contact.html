@@ -1,38 +1,35 @@
 {% extends "layout.html" %}
-
-{% block styles %}
-
-{% endblock %}
+{% from "_macros.html" import render_field %}
 
 {% block content %}
-<div class="form-container">
-    <h1 style="text-align: center;">Fale Connosco</h1>
-    <p style="text-align: center;">Tem alguma dúvida, sugestão ou encontrou um problema? Envie-nos uma mensagem!</p>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Entre em Contacto</h2>
+                    <p class="text-center text-muted mb-4">Tem alguma dúvida, sugestão ou precisa de suporte? Preencha o formulário abaixo e a nossa equipa responderá o mais breve possível.</p>
+                    
+                    <form method="POST" action="{{ url_for('main.contact') }}" novalidate>
+                        {{ form.hidden_tag() }} <div class="row">
+                            <div class="col-md-6">
+                                {{ render_field(form.name, placeholder="O seu nome completo") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ render_field(form.email, placeholder="O seu e-mail de contacto") }}
+                            </div>
+                        </div>
 
-    <form method="POST" action="{{ url_for('main.contact') }}">
-        <div class="form-group">
-            <label for="name">Seu Nome</label>
-            <input type="text" id="name" name="name" required value="{{ current_user.username if current_user.is_authenticated else '' }}">
+                        {{ render_field(form.category, class="form-select") }}
+                        {{ render_field(form.message, rows="5", placeholder="Escreva a sua mensagem aqui...") }}
+
+                        <div class="d-grid">
+                             {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="email">Seu Email</label>
-            <input type="email" id="email" name="email" required value="{{ current_user.email if current_user.is_authenticated else '' }}">
-        </div>
-        <div class="form-group">
-            <label for="category">Assunto</label>
-            <select id="category" name="category" required>
-                <option value="" disabled selected>-- Escolha uma categoria --</option>
-                <option value="Sugestão">Sugestão de Melhoria</option>
-                <option value="Reportar Problema">Reportar um Problema Técnico</option>
-                <option value="Dúvida sobre Planos">Dúvida sobre Planos</option>
-                <option value="Outro">Outro Assunto</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="message">Mensagem</label>
-            <textarea id="message" name="message" rows="6" required></textarea>
-        </div>
-        <button type="submit" class="btn">Enviar Mensagem</button>
-    </form>
+    </div>
 </div>
-{% endblock %}
+{% endblock content %}

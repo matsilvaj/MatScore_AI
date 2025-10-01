@@ -1,24 +1,32 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import render_field %}
 
 {% block content %}
-    <h1>Faça Login</h1>
-    <form method="POST" action="">
-        <div>
-            <label>Email</label>
-            <input type="email" name="email" required>
-        </div>
-        <div style="margin-top: 1em;">
-            <label>Senha</label>
-            <input type="password" name="password" required>
-        </div>
-        <div style="margin-top: 1.5em;">
-            <button type="submit">Login</button>
-        </div>
-    </form>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Login</h2>
+                    <form method="POST" action="{{ url_for('main.login') }}" novalidate>
+                        {{ form.hidden_tag() }} {{ render_field(form.email, placeholder="seu.email@exemplo.com") }}
+                        {{ render_field(form.password, placeholder="Sua senha") }}
 
-    <p><a href="{{ url_for('main.reset_request') }}">Esqueceu a senha?</a></p>
-
-    <p style="margin-top: 2em;">
-        <a href="{{ url_for('main.register') }}">Não tem uma conta? Registre-se</a>
-    </p>
-{% endblock %}
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary btn-block") }}
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <small><a href="{{ url_for('main.reset_request') }}">Esqueceu a senha?</a></small>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <small class="text-muted">
+                        Não tem uma conta? <a href="{{ url_for('main.register') }}">Registe-se</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

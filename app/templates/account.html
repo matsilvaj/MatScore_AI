@@ -1,42 +1,74 @@
 {% extends "layout.html" %}
-
-{% block styles %}
-
-{% endblock %}
+{% from "_macros.html" import render_field %}
 
 {% block content %}
-<h1>Configurações da Conta</h1>
+<div class="container mt-5">
+    <h1 class="mb-4">Minha Conta</h1>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Informações do Perfil</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Nome de Utilizador:</strong> {{ current_user.username }}</p>
+                    <p><strong>E-mail:</strong> {{ current_user.email }}</p>
+                    <p><strong>Plano de Assinatura:</strong> <span class="badge bg-info text-capitalize">{{ current_user.subscription_tier }}</span></p>
+                    <p><strong>E-mail Verificado:</strong> 
+                        {% if current_user.email_verified %}
+                            <span class="badge bg-success">Sim</span>
+                        {% else %}
+                            <span class="badge bg-warning">Não</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
 
-<div class="account-section">
-    <h2>Meu Plano</h2>
-    <p>Utilizador: <strong>{{ current_user.username }}</strong></p>
-    <p>Email: <strong>{{ current_user.email }}</strong></p>
-    <p>Plano Atual: <strong style="text-transform: capitalize;">{{ current_user.subscription_tier }}</strong></p>
-    {% if current_user.subscription_tier == 'free' %}
-        <a href="{{ url_for('main.plans') }}" class="btn">Fazer Upgrade</a>
-    {% endif %}
-</div>
-
-<div class="account-section">
-    <h2>Alterar Senha</h2>
-    <form method="POST" action="{{ url_for('main.change_password') }}">
-        <div class="form-group">
-            <label for="current_password">Senha Atual</label>
-            <input type="password" id="current_password" name="current_password" required>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Gerir Assinatura</h4>
+                </div>
+                <div class="card-body">
+                    <p>A gestão da sua assinatura é feita através do portal do nosso parceiro de pagamentos, Stripe.</p>
+                    <a href="#" class="btn btn-secondary">Portal do Cliente (Stripe)</a>
+                    <small class="d-block mt-2">Nota: A integração com o portal do cliente Stripe é um passo futuro.</small>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="new_password">Nova Senha</label>
-            <input type="password" id="new_password" name="new_password" required minlength="6">
-        </div>
-        <button type="submit" class="btn">Salvar Nova Senha</button>
-    </form>
-</div>
 
-<div class="account-section danger-zone">
-    <h2>Excluir Conta</h2>
-    <p>Atenção: Esta ação é irreversível. Todos os seus dados serão permanentemente apagados.</p>
-    <form method="POST" action="{{ url_for('main.delete_account') }}" onsubmit="return confirm('Tem a certeza absoluta que deseja excluir a sua conta? Esta ação não pode ser desfeita.');">
-        <button type="submit" class="btn btn-danger">Excluir Minha Conta</button>
-    </form>
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Alterar Senha</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('main.change_password') }}" novalidate>
+                        {{ change_password_form.hidden_tag() }}
+                        
+                        {{ render_field(change_password_form.current_password, placeholder="Sua senha atual") }}
+                        {{ render_field(change_password_form.new_password, placeholder="Sua nova senha") }}
+                        {{ render_field(change_password_form.confirm_new_password, placeholder="Confirme a nova senha") }}
+                        
+                        <div class="d-grid">
+                            {{ change_password_form.submit(class="btn btn-warning") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h4>Zona de Perigo</h4>
+                </div>
+                <div class="card-body">
+                    <p>Esta ação não pode ser desfeita. Todos os seus dados serão permanentemente eliminados.</p>
+                    <form method="POST" action="{{ url_for('main.delete_account') }}" onsubmit="return confirm('Tem a certeza que deseja excluir a sua conta permanentemente?');">
+                        <input type="submit" value="Excluir Minha Conta" class="btn btn-danger">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-{% endblock %}
+{% endblock content %}

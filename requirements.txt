@@ -15,3 +15,6 @@ pytz
 stripe
 Flask-Migrate
 gunicorn
+Flask_WTF
+email_validator
+pydantic

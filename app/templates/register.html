@@ -1,25 +1,31 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import render_field %}
 
 {% block content %}
-    <h1>Crie sua Conta</h1>
-    <form method="POST" action="">
-        <div>
-            <label>Nome</label>
-            <input type="text" name="username" required>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Criar Conta</h2>
+                    <form method="POST" action="{{ url_for('main.register') }}" novalidate>
+                        {{ form.hidden_tag() }} {{ render_field(form.username, placeholder="Escolha um nome de utilizador") }}
+                        {{ render_field(form.email, placeholder="O seu melhor e-mail") }}
+                        {{ render_field(form.password, placeholder="Crie uma senha forte") }}
+                        {{ render_field(form.confirm_password, placeholder="Confirme a sua senha") }}
+
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary btn-block") }}
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <small class="text-muted">
+                        Já tem uma conta? <a href="{{ url_for('main.login') }}">Faça Login</a>
+                    </small>
+                </div>
+            </div>
         </div>
-        <div style="margin-top: 1em;">
-            <label>Email</label>
-            <input type="email" name="email" required>
-        </div>
-        <div style="margin-top: 1em;">
-            <label>Senha</label>
-            <input type="password" name="password" required>
-        </div>
-        <div style="margin-top: 1.5em;">
-            <button type="submit">Registrar</button>
-        </div>
-    </form>
-    <p style="margin-top: 2em;">
-        <a href="{{ url_for('main.login') }}">Já tem uma conta? Faça login</a>
-    </p>
-{% endblock %}
+    </div>
+</div>
+{% endblock content %}

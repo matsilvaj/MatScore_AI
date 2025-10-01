@@ -1,15 +1,24 @@
 {% extends "layout.html" %}
+{% from "_macros.html" import render_field %}
 
 {% block content %}
-    <h1>Redefinir Senha</h1>
-    <p>Por favor, insira o e-mail associado à sua conta. Enviaremos um link para redefinir a sua senha.</p>
-    <form method="POST" action="">
-        <div style="margin-top: 1em;">
-            <label>Email</label>
-            <input type="email" name="email" required>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">Redefinir Senha</h2>
+                    <p class="text-center text-muted">Insira o e-mail associado à sua conta e enviaremos um link para redefinir a sua senha.</p>
+                    <form method="POST" action="{{ url_for('main.reset_request') }}" novalidate>
+                        {{ form.hidden_tag() }} {{ render_field(form.email, placeholder="seu.email@exemplo.com") }}
+
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary btn-block") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div style="margin-top: 1.5em;">
-            <button type="submit">Pedir Redefinição de Senha</button>
-        </div>
-    </form>
-{% endblock %}
+    </div>
+</div>
+{% endblock content %}
