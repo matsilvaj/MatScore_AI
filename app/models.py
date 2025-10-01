@@ -1,11 +1,10 @@
+# matsilvaj/matscore_ai/MatScore_AI-8c62a1bbb800a601129fe855777ce01336db29d0/app/models.py
 # app/models.py
 from . import db
 from flask_login import UserMixin
 from datetime import datetime, date
-# --- NOVAS IMPORTAÇÕES ---
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from flask import current_app
-# -------------------------
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -13,8 +12,9 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
     subscription_tier = db.Column(db.String(20), nullable=False, default='free')
-    # --- NOVO CAMPO ADICIONADO ---
     email_verified = db.Column(db.Boolean, nullable=False, default=False)
+    # --- NOVO CAMPO STRIPE ---
+    stripe_customer_id = db.Column(db.String(120), nullable=True)
 
     def get_reset_token(self, expires_sec=1800):
         s = Serializer(current_app.config['SECRET_KEY'])
@@ -32,6 +32,7 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f"User('{self.username}', '{self.email}', '{self.subscription_tier}')"
 
+# ... (resto do arquivo models.py sem alterações)
 class Analysis(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     match_api_id = db.Column(db.Integer, nullable=False)

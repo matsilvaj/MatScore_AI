@@ -1,6 +1,7 @@
+# matsilvaj/matscore_ai/MatScore_AI-8c62a1bbb800a601129fe855777ce01336db29d0/app/routes.py
 # app/routes.py
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
-                   request, Response, stream_with_context)
+                   request, Response, stream_with_context, jsonify) # <-- Adicionar jsonify
 from . import db, bcrypt, mail, limiter 
 from app.models import User, Analysis, DailyUserView, ContactMessage
 import os
@@ -8,13 +9,14 @@ from flask_mail import Message
 from flask_login import login_user, current_user, logout_user, login_required
 from datetime import date
 import json
-# --- NOVA IMPORTAÇÃO ---
 from functools import wraps
+import stripe # <-- Adicionar import
 
 from app.services.analysis_logic import gerar_analises
 
 main = Blueprint('main', __name__)
 
+# ... (suas funções de envio de email e decoradores) ...
 # --- FUNÇÃO HELPER PARA ENVIAR EMAIL DE VERIFICAÇÃO ---
 def send_verification_email(user):
     token = user.get_reset_token() # Reutilizamos o mesmo método de token
@@ -50,19 +52,108 @@ def confirmed_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROTAS PRINCIPAIS ---
 
+# --- ROTAS DE PAGAMENTO STRIPE ---
+
+@main.route("/create-checkout-session", methods=["POST"])
+@login_required
+def create_checkout_session():
+    price_id = request.form.get('price_id')
+    
+    # Cria um cliente na Stripe se o usuário ainda não tiver um
+    if not current_user.stripe_customer_id:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            name=current_user.username
+        )
+        current_user.stripe_customer_id = customer.id
+        db.session.commit()
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            customer=current_user.stripe_customer_id,
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                },
+            ],
+            mode="subscription", # MODO DE ASSINATURA
+            success_url=url_for('main.payment_success', _external=True),
+            cancel_url=url_for('main.payment_cancel', _external=True),
+            allow_promotion_codes=True, # Permite cupons de desconto
+        )
+        return redirect(checkout_session.url, code=303)
+    except Exception as e:
+        flash(f'Erro ao iniciar o pagamento: {e}', 'danger')
+        return redirect(url_for('main.plans'))
+
+@main.route("/payment-success")
+def payment_success():
+    flash('Pagamento bem-sucedido! Sua assinatura está ativa.', 'success')
+    return redirect(url_for('main.futebol'))
+
+@main.route("/payment-cancel")
+def payment_cancel():
+    flash('O pagamento foi cancelado.', 'info')
+    return redirect(url_for('main.plans'))
+
+@main.route("/stripe-webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get('Stripe-Signature')
+    webhook_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+    
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except ValueError as e:
+        # Payload inválido
+        return 'Invalid payload', 400
+    except stripe.error.SignatureVerificationError as e:
+        # Assinatura inválida
+        return 'Invalid signature', 400
+
+    # Lida com o evento de checkout bem-sucedido
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        customer_id = session.get('customer')
+        
+        # Encontra o usuário no seu banco de dados
+        user = User.query.filter_by(stripe_customer_id=customer_id).first()
+        if user:
+            user.subscription_tier = 'member' # Atualiza o plano do usuário
+            db.session.commit()
+
+    # Lida com o evento de renovação de assinatura bem-sucedida
+    if event['type'] == 'invoice.payment_succeeded':
+        invoice = event['data']['object']
+        customer_id = invoice.get('customer')
+        user = User.query.filter_by(stripe_customer_id=customer_id).first()
+        if user:
+            user.subscription_tier = 'member' # Garante que a assinatura continue ativa
+            db.session.commit()
+
+    # Lida com o evento de falha ou cancelamento da assinatura
+    if event['type'] == 'customer.subscription.deleted' or event['type'] == 'customer.subscription.updated':
+        subscription = event['data']['object']
+        if subscription['status'] != 'active':
+            customer_id = subscription.get('customer')
+            user = User.query.filter_by(stripe_customer_id=customer_id).first()
+            if user:
+                user.subscription_tier = 'free' # Volta para o plano gratuito
+                db.session.commit()
+
+    return 'OK', 200
+
+
+# --- ROTAS PRINCIPAIS --- (sem alterações, apenas para contexto)
 @main.route("/")
 @main.route("/home")
 def index():
-    # --- LÓGICA ALTERADA ---
-    # Pega a data de hoje no formato YYYY-MM-DD
     today_str = date.today().strftime('%Y-%m-%d')
-    
-    # Busca no banco de dados todas as análises para a data de hoje
     todays_analyses_db = Analysis.query.filter_by(analysis_date=today_str).all()
-    
-    # Processa as análises para passar ao template
     analyses_list = []
     for analysis_obj in todays_analyses_db:
         try:
@@ -71,9 +162,7 @@ def index():
             analyses_list.append(analysis_data)
         except json.JSONDecodeError:
             continue
-            
     return render_template('home.html', title='Início', analyses=analyses_list)
-
 
 @main.route("/futebol")
 @login_required
@@ -83,7 +172,6 @@ def futebol():
     if current_user.is_authenticated and current_user.subscription_tier == 'free':
         today = date.today()
         views_today_count = DailyUserView.query.filter_by(user_id=current_user.id, view_date=today).count()
-    
     return render_template('futebol.html', title='Análises de Futebol', views_today=views_today_count)
 
 @main.route("/basquete")
@@ -94,8 +182,11 @@ def basquete():
 
 @main.route("/plans")
 def plans():
-    return render_template('plans.html', title='Nossos Planos')
+    # Passa a chave publicável para o template
+    stripe_public_key = os.getenv('STRIPE_PUBLIC_KEY')
+    return render_template('plans.html', title='Nossos Planos', stripe_public_key=stripe_public_key)
 
+# ... (resto do seu arquivo de rotas) ...
 # --- API UNIFICADA ---
 
 @main.route('/api/analise')

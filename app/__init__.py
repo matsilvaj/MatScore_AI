@@ -1,3 +1,4 @@
+# matsilvaj/matscore_ai/MatScore_AI-8c62a1bbb800a601129fe855777ce01336db29d0/app/__init__.py
 # app/__init__.py
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -5,14 +6,14 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_caching import Cache
 from flask_mail import Mail
-# --- NOVAS IMPORTAÇÕES ---
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-# -------------------------
+from flask_migrate import Migrate # <-- 1. IMPORTAR MIGRATE
 from dotenv import load_dotenv
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+import stripe
 
 load_dotenv()
 
@@ -25,13 +26,12 @@ cache = Cache(config={
     'CACHE_REDIS_URL': os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0')
 })
 mail = Mail()
-# --- INICIALIZAÇÃO DO LIMITER ---
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri=os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0') # Usa o Redis para guardar os limites
+    storage_uri=os.getenv('CACHE_REDIS_URL', 'redis://localhost:6379/0')
 )
-# ------------------------------
+migrate = Migrate() # <-- 2. INICIALIZAR MIGRATE
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -54,24 +54,26 @@ def create_app():
     app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS').lower() in ['true', 'on', '1']
     app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
     app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+    
+    app.config['STRIPE_PUBLIC_KEY'] = os.getenv('STRIPE_PUBLIC_KEY')
+    stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
     db.init_app(app)
     bcrypt.init_app(app)
     login_manager.init_app(app)
     cache.init_app(app)
     mail.init_app(app)
-    # --- INICIALIZA O LIMITER COM A APP ---
+    migrate.init_app(app, db) # <-- 3. CONECTAR MIGRATE COM O APP E O DB
     if not app.debug:
         limiter.init_app(app)
-    # ------------------------------------
 
     from .routes import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
-    with app.app_context():
-        db.create_all()
+    # REMOVA OU COMENTE ESTA PARTE PARA QUE O MIGRATE CONTROLE A CRIAÇÃO DE TABELAS
+    # with app.app_context():
+    #     db.create_all()
 
-    # --- CONFIGURAÇÃO DE LOGGING ---
     if not app.debug and not app.testing:
         if not os.path.exists('logs'):
             os.mkdir('logs')
@@ -86,6 +88,6 @@ def create_app():
         app.logger.addHandler(file_handler)
         
         app.logger.setLevel(logging.INFO)
-        app.logger.info('MatScore AI startup')
+        app.logger.info('MatScore AI')
 
     return app

@@ -8,7 +8,7 @@
     </header>
 
     <div class="coupon-banner">
-        <p>🎉 <strong>OFERTA ESPECIAL:</strong> Use o cupom <strong>BEMVINDO25</strong> e ganhe 40% de desconto no seu primeiro ciclo!</p>
+        <p>🎉 <strong>OFERTA ESPECIAL:</strong> Use o cupom <strong>BEMVINDO25</strong> e ganhe 25% de desconto no seu primeiro ciclo!</p>
     </div>
 
     <div class="pricing-grid">
@@ -55,7 +55,10 @@
                  {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
                     <button disabled>Seu Plano Atual</button>
                 {% else %}
-                    <a href="#" role="button">Assinar Agora</a>
+                    <form action="{{ url_for('main.create_checkout_session') }}" method="POST">
+                        <input type="hidden" name="price_id" value="price_1SDDDbGxUYEalSSMLGjFFnKR">
+                        <button type="submit">Assinar Agora</button>
+                    </form>
                 {% endif %}
             </footer>
         </article>
@@ -81,7 +84,10 @@
                  {% if current_user.is_authenticated and current_user.subscription_tier == 'member' %}
                     <button disabled>Seu Plano Atual</button>
                 {% else %}
-                    <a href="#" role="button">Assinar Agora</a>
+                    <form action="{{ url_for('main.create_checkout_session') }}" method="POST">
+                        <input type="hidden" name="price_id" value="price_1SDDE2GxUYEalSSMjmhmCqra">
+                        <button type="submit">Assinar Agora</button>
+                    </form>
                 {% endif %}
             </footer>
         </article>

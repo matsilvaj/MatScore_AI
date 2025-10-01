@@ -12,3 +12,6 @@ Flask_Redis
 psycopg2_binary
 Flask_Limiter
 pytz
+stripe
+Flask-Migrate
+gunicorn
