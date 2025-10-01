@@ -104,6 +104,10 @@ def stripe_webhook():
     sig_header = request.headers.get('Stripe-Signature')
     webhook_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
     
+    # Se o webhook_secret não estiver configurado, não continue.
+    if not webhook_secret:
+        return "Webhook secret não configurado.", 500
+        
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, webhook_secret
@@ -118,32 +122,49 @@ def stripe_webhook():
     # Lida com o evento de checkout bem-sucedido
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        customer_id = session.get('customer')
         
-        # Encontra o usuário no seu banco de dados
-        user = User.query.filter_by(stripe_customer_id=customer_id).first()
-        if user:
-            user.subscription_tier = 'member' # Atualiza o plano do usuário
-            db.session.commit()
+        # --- CORREÇÃO APLICADA AQUI ---
+        # Em vez de usar session['customer'] diretamente,
+        # vamos buscar a sessão completa na API da Stripe.
+        try:
+            full_session = stripe.checkout.Session.retrieve(session.id)
+            customer_id = full_session.customer
+        except stripe.error.StripeError as e:
+            print(f"Erro ao buscar a sessão da Stripe: {e}")
+            return "Erro interno", 500
+        # -----------------------------
+
+        if customer_id:
+            # Encontra o usuário no seu banco de dados
+            user = User.query.filter_by(stripe_customer_id=customer_id).first()
+            if user:
+                user.subscription_tier = 'member' # Atualiza o plano do usuário
+                db.session.commit()
+                print(f"Assinatura ativada para o usuário: {user.email}")
 
     # Lida com o evento de renovação de assinatura bem-sucedida
     if event['type'] == 'invoice.payment_succeeded':
         invoice = event['data']['object']
         customer_id = invoice.get('customer')
-        user = User.query.filter_by(stripe_customer_id=customer_id).first()
-        if user:
-            user.subscription_tier = 'member' # Garante que a assinatura continue ativa
-            db.session.commit()
+        if customer_id:
+            user = User.query.filter_by(stripe_customer_id=customer_id).first()
+            if user:
+                user.subscription_tier = 'member' # Garante que a assinatura continue ativa
+                db.session.commit()
+                print(f"Assinatura renovada para o usuário: {user.email}")
+
 
     # Lida com o evento de falha ou cancelamento da assinatura
-    if event['type'] == 'customer.subscription.deleted' or event['type'] == 'customer.subscription.updated':
+    if event['type'] == 'customer.subscription.deleted' or (event['type'] == 'customer.subscription.updated' and event['data']['object'].get('cancel_at_period_end')):
         subscription = event['data']['object']
-        if subscription['status'] != 'active':
-            customer_id = subscription.get('customer')
+        customer_id = subscription.get('customer')
+        if customer_id:
             user = User.query.filter_by(stripe_customer_id=customer_id).first()
             if user:
                 user.subscription_tier = 'free' # Volta para o plano gratuito
                 db.session.commit()
+                print(f"Assinatura cancelada para o usuário: {user.email}")
+
 
     return 'OK', 200
 
