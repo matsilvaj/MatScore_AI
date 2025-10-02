@@ -1,11 +1,45 @@
-# app/services/ai_analyzer.py (Com validação JSON)
+# app/services/ai_analyzer.py
+
 import os
 import openai
 import json
 from flask import current_app
 from . import football_api
 
+# --- Novas importações do Pydantic ---
+from pydantic import BaseModel, ValidationError
+from typing import List, Dict
 
+# --- Definição dos Modelos de Validação Pydantic ---
+# Estes modelos definem a estrutura exata que esperamos receber da IA.
+
+class DesempenhoTime(BaseModel):
+    forma: str
+    ponto_forte: str
+    ponto_fraco: str
+
+class MercadoFavoravel(BaseModel):
+    mercado: str
+    justificativa: str
+
+class CenarioProvavel(BaseModel):
+    mercado: str
+    justificativa: str
+
+class AnaliseDetalhada(BaseModel):
+    desempenho_mandante: DesempenhoTime
+    desempenho_visitante: DesempenhoTime
+    confronto_direto: str
+    informacoes_relevantes: str
+    mercados_favoraveis: List[MercadoFavoravel]
+    cenario_provavel: CenarioProvavel
+
+class AnaliseCompletaIA(BaseModel):
+    mercado_principal: str
+    analise_detalhada: AnaliseDetalhada
+
+
+# --- Configuração do Cliente OpenAI (sem alterações) ---
 client = None
 try:
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -17,15 +51,16 @@ try:
 except Exception as e:
     print(f"❌ ERRO: Não foi possível configurar a IA da OpenAI. Erro: {e}")
 
-def gerar_analise_ia(partida, dados_para_analise): # <-- ALTERAÇÃO AQUI
-    """Gera a análise de uma partida usando o modelo da OpenAI."""
+
+def gerar_analise_ia(partida, dados_para_analise):
+    """Gera a análise de uma partida usando o modelo da OpenAI e valida a sua estrutura."""
     if not client:
         current_app.logger.error("Tentativa de gerar análise com o cliente da OpenAI não configurado.")
         return None, "Erro na IA: IA não configurada."
     
-    # Esta linha agora funcionará corretamente
     dados_json_str = json.dumps(dados_para_analise, indent=2)
 
+    # --- Prompt (sem alterações) ---
     prompt = f"""
     Você é o "Mat, o Analista", um especialista em apostas esportivas que segue um sistema rigoroso e conservador baseado em dados quantitativos. Sua análise deve ser baseada EXCLUSIVAMENTE nos dados fornecidos.
 
@@ -84,7 +119,8 @@ def gerar_analise_ia(partida, dados_para_analise): # <-- ALTERAÇÃO AQUI
       }}
     }}
     """
-
+    
+    # --- Bloco TRY/EXCEPT MODIFICADO para incluir validação Pydantic ---
     try:
         current_app.logger.info(f"Gerando análise de IA para: {partida['mandante_nome']} vs {partida['visitante_nome']}")
         
@@ -95,17 +131,33 @@ def gerar_analise_ia(partida, dados_para_analise): # <-- ALTERAÇÃO AQUI
             ],
             model="gpt-4o",
             response_format={"type": "json_object"},
-            temperature=0.5        )
+            temperature=0.5
+        )
         
         response_text = chat_completion.choices[0].message.content
         response_json = json.loads(response_text)
-        return response_json, None
+        
+        # --- ETAPA DE VALIDAÇÃO COM PYDANTIC ---
+        # Tentamos criar uma instância do nosso modelo AnaliseCompletaIA com os dados recebidos.
+        # Se a estrutura não corresponder (chaves em falta, tipos errados), o Pydantic levantará um erro ValidationError.
+        analise_validada = AnaliseCompletaIA(**response_json)
+        
+        # Se a validação for bem-sucedida, retornamos o JSON como um dicionário Python.
+        return analise_validada.model_dump(), None
+
+    except ValidationError as e:
+        # Se a validação do Pydantic falhar.
+        current_app.logger.error(f"Erro de validação Pydantic para {partida['mandante_nome']} vs {partida['visitante_nome']}: {e}")
+        current_app.logger.warning(f"--- JSON COM ESTRUTURA INVÁLIDA RECEBIDO --- \n{response_text}\n-----------------------------")
+        return None, "Erro na estrutura da resposta da IA. A análise foi descartada."
 
     except json.JSONDecodeError as e:
+        # Se o texto recebido não for um JSON válido.
         current_app.logger.error(f"Erro ao validar JSON da IA para {partida['mandante_nome']} vs {partida['visitante_nome']}: {e}")
         current_app.logger.warning(f"--- JSON INVÁLIDO RECEBIDO --- \n{response_text}\n-----------------------------")
         return None, "Erro no formato da resposta da IA. Não foi possível decodificar o JSON."
         
     except Exception as e:
+        # Outros erros (ex: problema de conexão com a API da OpenAI).
         current_app.logger.error(f"Erro ao gerar análise da IA para {partida['mandante_nome']} vs {partida['visitante_nome']}: {e}")
         return None, f"Não foi possível obter a análise da IA. Detalhes: {str(e)}"

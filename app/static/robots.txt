@@ -1,0 +1,18 @@
+# app/static/robots.txt
+
+# Permitir que todos os robôs (user-agents) rastreiem o site
+User-agent: *
+
+# Desautorizar o rastreamento de diretórios e páginas específicos
+Disallow: /account
+Disallow: /login
+Disallow: /register
+Disallow: /reset_password
+Disallow: /unconfirmed
+Disallow: /create-checkout-session
+Disallow: /payment-success
+Disallow: /payment-cancel
+Disallow: /stripe-webhook
+
+# Informar aos robôs onde encontrar o sitemap
+Sitemap: https://www.seu-dominio.com/sitemap.xml

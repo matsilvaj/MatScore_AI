@@ -10,23 +10,22 @@ function initializeAnalysisLoader(apiUrl) {
     const nextDayBtn = document.getElementById('next-day');
     
     let eventSource = null;
-    let loadingInterval = null; // Variável para controlar a animação do texto
+    let loadingInterval = null; 
 
     if (!container || !skeletonLoader || !skeletonGrid || !loaderText || !datePicker || !prevDayBtn || !nextDayBtn) {
         console.error("Elementos essenciais não encontrados na página.");
         return;
     }
 
-    // --- FUNÇÕES PARA ANIMAR O TEXTO DE LOADING ---
     function startLoadingAnimation(baseText) {
-        stopLoadingAnimation(); // Para qualquer animação anterior
+        stopLoadingAnimation(); 
         let dotCount = 0;
         loaderText.textContent = baseText;
         loadingInterval = setInterval(() => {
-            dotCount = (dotCount + 1) % 4; // Circula de 0 a 3
+            dotCount = (dotCount + 1) % 4;
             const dots = '.'.repeat(dotCount);
             loaderText.textContent = baseText + dots;
-        }, 400); // Velocidade da animação
+        }, 400); 
     }
 
     function stopLoadingAnimation() {
@@ -35,7 +34,6 @@ function initializeAnalysisLoader(apiUrl) {
             loadingInterval = null;
         }
     }
-    // ---------------------------------------------
 
     datePicker.value = new Date().toISOString().split('T')[0];
     fetchAnalyses();
@@ -62,7 +60,7 @@ function initializeAnalysisLoader(apiUrl) {
         skeletonLoader.style.display = 'block';
         skeletonGrid.style.display = 'grid';
         loaderText.style.display = 'block';
-        startLoadingAnimation('Encontrando partidas'); // Inicia a animação
+        startLoadingAnimation('Encontrando partidas');
 
         const fullApiUrl = `${apiUrl}?date=${selectedDate}`;
         eventSource = new EventSource(fullApiUrl);
@@ -82,7 +80,7 @@ function initializeAnalysisLoader(apiUrl) {
                 switch (resultado.status) {
                     case 'league_start':
                         hasFoundGames = true;
-                        startLoadingAnimation('Gerando análises'); // Muda o texto e continua a animação
+                        startLoadingAnimation('Gerando análises');
                         
                         leagueId = resultado.liga_nome.replace(/\s+/g, '-').toLowerCase();
                         const flagImg = resultado.pais_flag ? `<img src="${resultado.pais_flag}" alt="${resultado.pais_nome}" class="league-flag">` : '';
@@ -114,9 +112,14 @@ function initializeAnalysisLoader(apiUrl) {
             }
 
             if (!currentLeagueContainer) return;
-            
+
+            // --- LÓGICA DO CARD ATUALIZADA ---
+            const link = resultado.error ? `<a href="#" role="button" class="outline secondary disabled">Indisponível</a>` : `<a href="/analysis/${resultado.analysis_id}" role="button" class="outline">Ver Análise</a>`;
+            const recommendation = resultado.error ? `<strong style="color: var(--danger);">${resultado.recomendacao}</strong>` : `<strong>${resultado.recomendacao}</strong>`;
+
             const cardHtml = `
                 <article class="match-card">
+                    <div class="match-card-time">${resultado.horario || 'N/A'}</div>
                     <div class="match-card-header">
                         <div class="team">
                             <img src="${resultado.mandante_escudo}" alt="Escudo do ${resultado.mandante_nome}">
@@ -131,9 +134,9 @@ function initializeAnalysisLoader(apiUrl) {
                     <footer class="match-card-footer">
                         <div class="scenario">
                             <span>Cenário Provável:</span>
-                            <strong>${resultado.recomendacao}</strong>
+                            ${recommendation}
                         </div>
-                        <a href="/analysis/${resultado.analysis_id}" role="button" class="outline">Ver Análise</a>
+                        ${link}
                     </footer>
                 </article>
             `;

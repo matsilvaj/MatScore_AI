@@ -1,25 +1,24 @@
 # app/routes.py
 
 from flask import (render_template, url_for, flash, redirect, Blueprint, 
-                   request, Response, stream_with_context, jsonify)
+                   request, Response, stream_with_context, jsonify, make_response)
 from . import db, bcrypt, mail, limiter 
 from app.models import User, Analysis, DailyUserView, ContactMessage
 import os
 from flask_mail import Message
 from flask_login import login_user, current_user, logout_user, login_required
-from datetime import date
+from datetime import date, datetime
 import json
 from functools import wraps
 import stripe
 
-# Importar os novos formulários
 from app.forms import (RegistrationForm, LoginForm, RequestResetForm, ResetPasswordForm, 
                        ChangePasswordForm, ContactForm)
 from app.services.analysis_logic import gerar_analises
 
 main = Blueprint('main', __name__)
 
-# --- Funções de email e decoradores (sem alterações) ---
+# --- FUNÇÃO HELPER PARA ENVIAR EMAIL DE VERIFICAÇÃO ---
 def send_verification_email(user):
     token = user.get_reset_token()
     msg = Message('Confirme o Seu Endereço de E-mail - MatScore AI',
@@ -32,6 +31,7 @@ Se você não se registou no nosso site, por favor, ignore este e-mail.
 '''
     mail.send(msg)
 
+# --- FUNÇÃO HELPER PARA ENVIAR EMAIL DE RESET ---
 def send_reset_email(user):
     token = user.get_reset_token()
     msg = Message('Pedido de Redefinição de Senha - MatScore AI',
@@ -44,6 +44,7 @@ Se você não fez este pedido, simplesmente ignore este e-mail e nenhuma altera�
 '''
     mail.send(msg)
 
+# --- DECORADOR PARA EXIGIR CONFIRMAÇÃO DE EMAIL ---
 def confirmed_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -52,7 +53,9 @@ def confirmed_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROTAS DE PAGAMENTO STRIPE (sem alterações) ---
+
+# --- ROTAS DE PAGAMENTO STRIPE ---
+
 @main.route("/create-checkout-session", methods=["POST"])
 @login_required
 def create_checkout_session():
@@ -69,7 +72,12 @@ def create_checkout_session():
     try:
         checkout_session = stripe.checkout.Session.create(
             customer=current_user.stripe_customer_id,
-            line_items=[{"price": price_id, "quantity": 1}],
+            line_items=[
+                {
+                    "price": price_id,
+                    "quantity": 1,
+                },
+            ],
             mode="subscription",
             success_url=url_for('main.payment_success', _external=True),
             cancel_url=url_for('main.payment_cancel', _external=True),
@@ -100,10 +108,12 @@ def stripe_webhook():
         return "Webhook secret não configurado.", 500
         
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except ValueError:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+    except ValueError as e:
         return 'Invalid payload', 400
-    except stripe.error.SignatureVerificationError:
+    except stripe.error.SignatureVerificationError as e:
         return 'Invalid signature', 400
 
     if event['type'] == 'checkout.session.completed':
@@ -114,6 +124,7 @@ def stripe_webhook():
         except stripe.error.StripeError as e:
             print(f"Erro ao buscar a sessão da Stripe: {e}")
             return "Erro interno", 500
+
         if customer_id:
             user = User.query.filter_by(stripe_customer_id=customer_id).first()
             if user:
@@ -143,7 +154,8 @@ def stripe_webhook():
 
     return 'OK', 200
 
-# --- ROTAS PRINCIPAIS (sem alterações para contexto) ---
+
+# --- ROTAS PRINCIPAIS ---
 @main.route("/")
 @main.route("/home")
 def index():
@@ -157,7 +169,8 @@ def index():
             analyses_list.append(analysis_data)
         except json.JSONDecodeError:
             continue
-    return render_template('home.html', title='Início', analyses=analyses_list)
+    page_description = "Análises de futebol para os jogos de hoje, geradas por Inteligência Artificial para ajudar nos seus prognósticos."
+    return render_template('home.html', title='Início', description=page_description, analyses=analyses_list)
 
 @main.route("/futebol")
 @login_required
@@ -167,20 +180,23 @@ def futebol():
     if current_user.is_authenticated and current_user.subscription_tier == 'free':
         today = date.today()
         views_today_count = DailyUserView.query.filter_by(user_id=current_user.id, view_date=today).count()
-    return render_template('futebol.html', title='Análises de Futebol', views_today=views_today_count)
+    page_description = "Acesse análises de jogos de futebol do dia. Use os filtros para encontrar as partidas e veja os prognósticos da nossa IA."
+    return render_template('futebol.html', title='Análises de Futebol', description=page_description, views_today=views_today_count)
 
 @main.route("/basquete")
 @login_required
 @confirmed_required
 def basquete():
-    return render_template('basquete.html', title='Análises de Basquete')
+    page_description = "Análises de jogos de basquete (em breve)."
+    return render_template('basquete.html', title='Análises de Basquete', description=page_description)
 
 @main.route("/plans")
 def plans():
     stripe_public_key = os.getenv('STRIPE_PUBLIC_KEY')
-    return render_template('plans.html', title='Nossos Planos', stripe_public_key=stripe_public_key)
+    page_description = "Conheça os nossos planos de assinatura e tenha acesso a análises de mais ligas e funcionalidades exclusivas."
+    return render_template('plans.html', title='Nossos Planos', description=page_description, stripe_public_key=stripe_public_key)
 
-# --- API UNIFICADA (sem alterações) ---
+# --- API UNIFICADA ---
 @main.route('/api/analise')
 @login_required
 @confirmed_required
@@ -192,15 +208,14 @@ def api_analise():
     data_selecionada = request.args.get('date', default=str(date.today()), type=str)
     return Response(stream_with_context(gerar_analises(data_selecionada, user_tier)), mimetype='text/event-stream')
 
-# --- ROTAS DE AUTENTICAÇÃO E VERIFICAÇÃO (MODIFICADAS) ---
-
+# --- ROTAS DE AUTENTICAÇÃO E VERIFICAÇÃO ---
 @main.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.futebol'))
     
     form = RegistrationForm()
-    if form.validate_on_submit(): # Valida no POST e protege contra CSRF
+    if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
@@ -232,7 +247,6 @@ def login():
             
     return render_template('login.html', title='Login', form=form)
 
-# --- Rotas de confirmação de email e reenvio (sem alterações) ---
 @main.route('/confirm/<token>')
 @login_required
 def confirm_email(token):
@@ -277,7 +291,8 @@ def reset_request():
     form = RequestResetForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
-        send_reset_email(user)
+        if user:
+            send_reset_email(user)
         flash('Se existir uma conta com esse e-mail, um link para redefinir a senha foi enviado.', 'info')
         return redirect(url_for('main.login'))
         
@@ -303,13 +318,12 @@ def reset_token(token):
         
     return render_template('reset_token.html', title='Redefinir Senha', form=form)
 
-# --- ROTAS DE CONTEÚDO E CONTA (com alterações) ---
+# --- ROTAS DE CONTEÚDO E CONTA ---
 
 @main.route("/analysis/<int:analysis_id>")
 @login_required
 @confirmed_required
 def analysis_detail(analysis_id):
-    # ... (lógica da rota inalterada) ...
     limit_reached = False
     
     if current_user.is_authenticated and current_user.subscription_tier == 'free':
@@ -328,9 +342,15 @@ def analysis_detail(analysis_id):
 
     analysis_obj = Analysis.query.get_or_404(analysis_id)
     analysis_data = json.loads(analysis_obj.content)
-    page_title = f"{analysis_data.get('mandante_nome', 'Análise')} vs {analysis_data.get('visitante_nome', 'Detalhada')}"
     
-    return render_template('analysis_detail.html', title=page_title, analysis=analysis_data, limit_reached=limit_reached)
+    page_title = f"{analysis_data.get('mandante_nome', 'Análise')} vs {analysis_data.get('visitante_nome', 'Detalhada')}"
+    page_description = f"Análise detalhada e prognóstico para o jogo entre {analysis_data.get('mandante_nome')} e {analysis_data.get('visitante_nome')}. Veja estatísticas, mercados favoráveis e o cenário mais provável gerado por IA."
+    
+    return render_template('analysis_detail.html', 
+                           title=page_title, 
+                           description=page_description,
+                           analysis=analysis_data, 
+                           limit_reached=limit_reached)
 
 @main.route("/account")
 @login_required
@@ -351,7 +371,6 @@ def change_password():
         else:
             flash('A sua senha atual está incorreta. Por favor, tente novamente.', 'danger')
     else:
-        # Se houver erros de validação (ex: senhas não coincidem), eles serão mostrados no template
         for field, errors in form.errors.items():
             for error in errors:
                 flash(error, 'danger')
@@ -361,7 +380,6 @@ def change_password():
 @main.route("/account/delete", methods=['POST'])
 @login_required
 def delete_account():
-    # ... (lógica da rota inalterada) ...
     db.session.delete(current_user)
     db.session.commit()
     logout_user()
@@ -413,3 +431,34 @@ def contact():
         return redirect(url_for('main.contact'))
         
     return render_template('contact.html', title='Contacto', form=form)
+
+# --- ROTA PARA SITEMAP ---
+
+@main.route('/sitemap.xml')
+def sitemap():
+    """Gera o sitemap.xml dinamicamente."""
+    pages = []
+    lastmod = datetime.now().strftime('%Y-%m-%d')
+
+    static_urls = [
+        url_for('main.index', _external=True),
+        url_for('main.futebol', _external=True),
+        url_for('main.plans', _external=True),
+        url_for('main.terms', _external=True),
+        url_for('main.privacy', _external=True),
+        url_for('main.contact', _external=True),
+    ]
+    for url in static_urls:
+        pages.append({'loc': url, 'lastmod': lastmod, 'changefreq': 'daily', 'priority': '0.8'})
+
+    analyses = Analysis.query.order_by(Analysis.generated_at.desc()).all()
+    for analysis in analyses:
+        url = url_for('main.analysis_detail', analysis_id=analysis.id, _external=True)
+        analysis_lastmod = analysis.generated_at.strftime('%Y-%m-%d')
+        pages.append({'loc': url, 'lastmod': analysis_lastmod, 'changefreq': 'weekly', 'priority': '1.0'})
+
+    sitemap_xml = render_template('sitemap_template.xml', pages=pages)
+    response = make_response(sitemap_xml)
+    response.headers["Content-Type"] = "application/xml"
+
+    return response

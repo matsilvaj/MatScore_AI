@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    
     <title>{{ title }} - MatScore AI</title>
+    <meta name="description" content="{{ description if description else 'Análises de futebol detalhadas e prognósticos gerados por Inteligência Artificial. Aumente a sua performance com dados e estatísticas.' }}">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
